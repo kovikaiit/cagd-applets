@@ -52,10 +52,26 @@ function PointOnBezierCurve(P, n, u)
 	return C;
 }
 
+function PointOnBezierSurface(P, n, u, v)
+{ 
+	Bu = AllBernstein(n, u);
+	Bv = AllBernstein(n, v);
+	var C = new THREE.Vector3(0.0, 0.0, 0.0);
+	for (k = 0; k <= n; k++) 
+	{
+		for (l = 0; l <= n; l++) 
+		{
+			C.addScaledVector(P[k][l], Bu[k]*Bv[l]);
+		}
+	}
+	return C;
+}
+
+
 var BezierCurve = THREE.Curve.create(
     function ( P, n ) { //custom curve constructor
         this.P = P;
-		this.n = n
+		this.n = n;
     },
 
     function ( t ) { //getPoint: t is between 0-1
