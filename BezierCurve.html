@@ -22,6 +22,9 @@
 		<script src="js/bezier.js"></script>
 		<script src="js/TransformControls.js"></script>
 		<script src="js/dat.gui.min.js"></script>
+		<script src="js/JSCAGD/JSCAGD.js"></script>
+		<script src="js/JSCAGD/BaseFunctions.js"></script>
+		<script src="js/JSCAGD/BsplineCurve.js"></script>
 		<script>
 			var container;
 			var scene, camera, renderer;
@@ -146,8 +149,9 @@
 			}
 			
 			function drawCurve() {
-				bezierGeometry = new BezierCurve( P, n );
+				bezierGeometry = new JSCAGD.BsplineCurve( P, n, 3);
 
+				x = 
 				tube = new THREE.TubeGeometry(
 				    bezierGeometry,  //path
 				    50,    //segments
@@ -191,7 +195,7 @@
 				{
 					P[i] = controlPoints[i].position;
 				}
-				bezierGeometry = new BezierCurve( P, n );
+				bezierGeometry = new JSCAGD.BsplineCurve( P, n, 3 );
 
 				tube = new THREE.TubeGeometry(
 				    bezierGeometry,  //path

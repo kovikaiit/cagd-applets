@@ -1,8 +1,9 @@
 
+"use strict";
 
-function BernsteinBase(i, n, u)
-{
-	var temp = new Array();
+function BernsteinBase(i, n, u) {
+	var temp = [];
+	var k, j;
 	for (k = 0; k <= n; k++) 
 	{
 	    temp.push(0.0);
@@ -21,7 +22,8 @@ function BernsteinBase(i, n, u)
 
 function AllBernstein(n, u) 
 {
-    var B = new Array();
+    var B = [];
+    var k, j;
 	for (k = 0; k <= n; k++) 
 	{
 	    B.push(0.0);
@@ -41,10 +43,62 @@ function AllBernstein(n, u)
 }
 
 
+function deCasteljau1(P, n, u)
+{ 							
+	var Q = [];
+	var i, k;					
+	for (i = 0; i <= n; i++) 
+	{
+		Q.push(P[i].clone()); 
+	}	
+	for (k = 1; k <= n; k++)
+	{
+		for (i = 0; i <= n - k; i++)
+		{
+			Q[i].multiplyScalar(1.0 - u);
+			Q[i].addScaledVector(Q[i+1], u);
+			//Q[i] = (1.0-u)*Q[i] + u*Q[i+1]; 
+		}	
+	}
+	return Q[0];
+}
+
+
+// Not tested yet
+function deCasteljauSurface(P, n, m, u0, v0)
+{
+	var Q = [];
+	var i, j;
+	if (n <= m)
+	{
+		for (j = 0; j <= m; j++)
+		{
+			Q[j] = deCasteljau1(P[j], n, u0);
+		}
+		return deCasteljau1(Q, m, v0);
+	}
+	else
+	{
+		for (i = 0; i <= n; i++)
+		{
+			var PT = new Array();
+			for (j = 0; j <= n; j++)
+			{
+				PT.push(P[j][i]);
+			}
+			Q[i] = deCasteljau1(PT, m, v0);
+		}
+		return deCasteljau1(Q, n, u0);
+	}	
+}
+
+
+
 function PointOnBezierCurve(P, n, u)
 { 
-	B = AllBernstein(n, u);
+	var B = AllBernstein(n, u);
 	var C = new THREE.Vector3(0.0, 0.0, 0.0);
+	var k;
 	for (k = 0; k <= n; k++) 
 	{
 		C.addScaledVector(P[k], B[k]);
@@ -54,8 +108,8 @@ function PointOnBezierCurve(P, n, u)
 
 function PointOnBezierSurface(P, n, u, v)
 { 
-	Bu = AllBernstein(n, u);
-	Bv = AllBernstein(n, v);
+	var Bu = AllBernstein(n, u);
+	var Bv = AllBernstein(n, v);
 	var C = new THREE.Vector3(0.0, 0.0, 0.0);
 	for (k = 0; k <= n; k++) 
 	{
@@ -68,13 +122,24 @@ function PointOnBezierSurface(P, n, u, v)
 }
 
 
-var BezierCurve = THREE.Curve.create(
-    function ( P, n ) { //custom curve constructor
-        this.P = P;
-		this.n = n;
-    },
 
-    function ( t ) { //getPoint: t is between 0-1
-        return PointOnBezierCurve(this.P, this.n, t);
-    }
+
+var BezierCurve = THREE.Curve.create(
+	function(P, n) { //custom curve constructor
+		this.P = P;
+		this.n = n;
+	},
+
+	function(t) { //getPoint: t is between 0-1
+		//return PointOnBezierCurve(this.P, this.n, t);
+		return deCasteljau1(this.P, this.n, t);
+	}
 );
+
+
+
+
+
+
+
+
