@@ -164,7 +164,8 @@
 				controlPolygon.vertices = P;
 				controlPolygon.computeLineDistances();
 				
-				// Tube around curve
+
+				// Tube around the curve
 				tubeMesh = new THREE.Mesh( tube, material );
 				scene.add( tubeMesh );
 				controlPolygonPath = new THREE.Line( controlPolygon, dashedmaterial );	
@@ -213,7 +214,6 @@
 				controlPolygon.vertices = P;
 				controlPolygon.computeLineDistances();
 				controlPolygonPath.geometry = controlPolygon;
-				
 			}
 			
 			function updateCurvePoint() {

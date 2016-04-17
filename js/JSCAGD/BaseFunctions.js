@@ -97,7 +97,7 @@ JSCAGD.KnotVector.createUniform = function(n, p) {
  */
 JSCAGD.KnotVector.findSpan = function(U, n, p, u) {
 	if (u === U[n + 1]) {
-		return n; //return n + 1;
+		return n; //(n + 1) in NURBS Book ???
 	}
 	var low = p;
 	var high = n + 1;
@@ -130,7 +130,7 @@ JSCAGD.BsplineBase = {};
  */
 JSCAGD.BsplineBase.evalNonWanish = function(U, n, p, u, i) {
 	i = typeof i !== 'undefined' ? i : JSCAGD.KnotVector.findSpan(U, n, p, u);
-	
+
 	var N = [];
 	var left = [];
 	var right = [];
@@ -156,8 +156,8 @@ JSCAGD.BsplineBase.evalNonWanish = function(U, n, p, u, i) {
  * @param {List} U - The knot vector
  * @param {Number} n - There are n + 1 control points
  * @param {Number} p - The degree
- * @param  {Number} u - The parameter value
- * @param  {Number} i - MUST BE the findSpan result
+ * @param {Number} u - The parameter value
+ * @param {Number} i - MUST BE the findSpan result
  * @return {List} ders - The derivatives of base functions
  */
 JSCAGD.BsplineBase.evalNonWanishDer = function(U, n, p, u, i) {
@@ -179,9 +179,15 @@ JSCAGD.BsplineBase.evalNonWanishDer = function(U, n, p, u, i) {
 		}
 	}
 	for (j = 0; j < 2; j++) {
-		ndu.push([]);
+		a.push([]);
 		for (r = 0; r <= p; r++) {
 			a[j].push(0.0);
+		}
+	}
+	for (k = 0; k <= n; k++) {
+		ders.push([]);
+		for (r = 0; r <= p; r++) {
+			ders[k].push(0.0);
 		}
 	}
 
