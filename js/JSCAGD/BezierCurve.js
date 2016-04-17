@@ -4,12 +4,12 @@ var JSCAGD = JSCAGD || {};
 
 
 /**
- * Bezier curve class inherited from ParamtericCurve
+ * Bezier curve class inherited from ParametricCurve
  * @constructor
  * @param {List} P - Control points 
  * @param {Number} n - Degree
  */
-JSCAGD.BezierCurve = JSCAGD.ParamtericCurve.create(
+JSCAGD.BezierCurve = JSCAGD.ParametricCurve.create(
 	function(P, n) {
 		this.n = typeof n !== 'undefined' ? n : P.length - 1;
 		this.P = P;

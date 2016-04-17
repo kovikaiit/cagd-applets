@@ -4,14 +4,14 @@ var JSCAGD = JSCAGD || {};
 
 
 /**
- * B-spline curve class inherited from ParamtericCurve
+ * B-spline curve class inherited from ParametricCurve
  * @constructor
  * @param {List} P - Control points 
  * @param {Number} n - There are n-1 control points
  * @param {Number} p - The degree
  * @param {List} U - The list of the numbers in the knot vector
  */
-JSCAGD.BsplineCurve = JSCAGD.ParamtericCurve.create(
+JSCAGD.BsplineCurve = JSCAGD.ParametricCurve.create(
 	function(P, n, p, U) {
 		this.U = typeof U !== 'undefined' ? U : JSCAGD.KnotVector.createUniform(n, p);
 		this.n = n;
