@@ -6,7 +6,9 @@
 
 // General control net handler for curves and surfaces
 
-var ControlNet = function(geometry, scene, camera, renderer, onChange) {
+var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, dashedmaterial) {
+	THREE.Object3D.call(this);
+
 	var that = this;
 	var i;
 	var spgeometry;
@@ -14,24 +16,9 @@ var ControlNet = function(geometry, scene, camera, renderer, onChange) {
 
 	this.geometry = geometry;
 	this.controlPoints = [];
-	this.scene = scene;
 	this.camera = camera;
 	this.renderer = renderer;
 	this.mouse = new THREE.Vector2();
-
-
-	// Materials
-	this.pointmaterial = new THREE.MeshLambertMaterial({
-		color: 0x8C001A,
-		shading: THREE.SmoothShading
-	});
-
-	this.dashedmaterial = new THREE.LineDashedMaterial({
-		color: 0x000000,
-		linewidth: 1,
-		dashSize: 30,
-		gapSize: 20
-	});
 
 
 	// Control point moving
@@ -49,26 +36,27 @@ var ControlNet = function(geometry, scene, camera, renderer, onChange) {
 
 
 	// Control polygon for curves
-	if(geometry.controlNetType === 'curve')
-	{	
+	if (geometry.controlNetType === 'curve') {
 		this.controlPolygon = new THREE.Geometry();
 		this.controlPolygon.vertices = this.geometry.P;
 		this.controlPolygon.computeLineDistances();
-		this.controlPolygonPath = new THREE.Line( this.controlPolygon, this.dashedmaterial );	
+		this.controlPolygonPath = new THREE.Line(this.controlPolygon, dashedmaterial);
 		this.controlPolygon.dynamic = true;
 		this.controlPolygonPath.dynamic = true;
-		this.scene.add( this.controlPolygonPath );
-	}	
+		this.add(this.controlPolygonPath);
+	}
 
 	// Control points
 	for (i = 0; i <= this.geometry.n; i++) {
 		spgeometry = new THREE.SphereGeometry(20, 32, 32);
-		sphere = new THREE.Mesh(spgeometry, this.pointmaterial);
+		sphere = new THREE.Mesh(spgeometry, pointmaterial);
 		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
 		this.controlPoints.push(sphere);
-		this.scene.add(sphere);
+		this.add(sphere);
 	}
 };
+
+ControlNet.prototype = Object.create(THREE.Object3D.prototype);
 
 ControlNet.prototype.constructor = ControlNet;
 
@@ -81,7 +69,7 @@ ControlNet.prototype.update = function() {
 	this.controlPolygon.verticesNeedUpdate = true;
 	//this.controlPolygonPath.verticesNeedUpdate = true;
 	this.controlPolygon.lineDistancesNeedUpdate = true;
-	
+
 };
 
 ControlNet.prototype.render = function() {
@@ -95,21 +83,24 @@ ControlNet.prototype.onMouseDown = function(event) {
 	var intersects = this.raycaster.intersectObjects(this.controlPoints);
 	if (intersects.length > 0) {
 		this.SELECTED = intersects[0].object;
-		this.scene.add(this.control);
+		this.add(this.control);
 		this.control.attach(this.SELECTED);
 	} else if (this.SELECTED !== null) {
 		this.control.detach(this.SELECTED);
-		this.scene.remove(this.control);
+		this.remove(this.control);
 		this.SELECTED = null;
 	}
 };
 
 
+
 // Curve drawing and edit/update handler
 
-var CurveEditor = function(curve, scene) {
+var CurveEditor = function(curve) {
+
+	THREE.Object3D.call(this);
+
 	this.curve = curve;
-	this.scene = scene;
 
 	// Materials
 	this.material = new THREE.MeshLambertMaterial({
@@ -140,19 +131,36 @@ var CurveEditor = function(curve, scene) {
 	this.tube.verticesNeedUpdate = true;
 	this.tubeMesh.verticesNeedUpdate = true;
 
-	this.scene.add(this.tubeMesh);
+	this.add(this.tubeMesh);
 
-	this.parameters = {
-		t: 0.5
-	};
+	this.t = 0.5;
+	this.showFrame = true;
+	this.showPoint = true;
 
-	//Point at 't'
+	var pos = this.curve.getPoint(this.t);
 	var geometry = new THREE.SphereGeometry(25, 32, 32);
 	this.curvePoint = new THREE.Mesh(geometry, this.movingpointmaterial);
-	var pos = this.curve.getPoint(this.parameters.t); //need to check
 	this.curvePoint.position.set(pos.x, pos.y, pos.z);
-	this.scene.add(this.curvePoint);
+
+	if (this.showPoint) {
+		this.add(this.curvePoint);
+	}
+
+	var frenetFrame = this.curve.getFrenetFrame(this.t);
+
+	this.tArrow = new THREE.ArrowHelper(frenetFrame.tangent, pos, 200, 0x000000);
+	this.nArrow = new THREE.ArrowHelper(frenetFrame.normal, pos, 200, 0x000000);
+	this.bArrow = new THREE.ArrowHelper(frenetFrame.binormal, pos, 200, 0x000000);
+
+	if (this.showFrame) {
+		this.add(this.tArrow);
+		this.add(this.nArrow);
+		this.add(this.bArrow);
+	}
+
 };
+
+CurveEditor.prototype = Object.create(THREE.Object3D.prototype);
 
 CurveEditor.prototype.constructor = CurveEditor;
 
@@ -173,9 +181,55 @@ CurveEditor.prototype.update = function() {
 };
 
 CurveEditor.prototype.updateCurvePoint = function() {
-	var pos = this.curve.getPoint(this.parameters.t);
-	this.curvePoint.position.set(pos.x, pos.y, pos.z);
+	var pos = this.curve.getPoint(this.t);
+
+	if (this.showPoint) {
+		this.curvePoint.position.set(pos.x, pos.y, pos.z);
+	}
+
+	if (this.showFrame) {
+		var frenetFrame = this.curve.getFrenetFrame(this.t);
+
+		this.tArrow.position.copy(pos);
+		this.tArrow.setDirection(frenetFrame.tangent);
+
+		this.nArrow.position.copy(pos);
+		this.nArrow.setDirection(frenetFrame.normal);
+
+		this.bArrow.position.copy(pos);
+		this.bArrow.setDirection(frenetFrame.binormal);
+	}
 };
+
+CurveEditor.prototype.setShow = function() {
+	if (this.showPoint) {
+		this.curvePoint.position.set(pos.x, pos.y, pos.z);
+		this.add(this.curvePoint);
+	} else {
+		this.remove(this.curvePoint);
+	}
+	if (this.showFrame) {
+		var frenetFrame = this.curve.getFrenetFrame(this.t);
+
+		this.tArrow.position.copy(pos);
+		this.tArrow.setDirection(frenetFrame.tangent);
+
+		this.nArrow.position.copy(pos);
+		this.nArrow.setDirection(frenetFrame.normal);
+
+		this.bArrow.position.copy(pos);
+		this.bArrow.setDirection(frenetFrame.binormal);
+		
+		this.add(this.tArrow);
+		this.add(this.nArrow);
+		this.add(this.bArrow);
+	} else {
+		this.remove(this.tArrow);
+		this.remove(this.nArrow);
+		this.remove(this.bArrow);
+	}
+};
+
 
 
 // Main program
@@ -251,29 +305,59 @@ CurveEditor.prototype.updateCurvePoint = function() {
 		var P = [p0, p1, p2, p3, p4];
 		var n = 4;
 		curve = new JSCAGD.BsplineCurve(P, n, 3);
-		cEditor = new CurveEditor(curve, scene, camera, renderer);
-		controlNet = new ControlNet(curve, scene, camera, renderer,
+
+
+		// Materials
+		var pointmaterial = new THREE.MeshLambertMaterial({
+			color: 0x8C001A,
+			shading: THREE.SmoothShading
+		});
+
+		var dashedmaterial = new THREE.LineDashedMaterial({
+			color: 0x000000,
+			linewidth: 1,
+			dashSize: 30,
+			gapSize: 20
+		});
+
+
+		cEditor = new CurveEditor(curve);
+		scene.add(cEditor);
+
+		controlNet = new ControlNet(curve, camera, renderer,
 			function() {
 				cEditor.update();
 				cEditor.updateCurvePoint();
-			});
-
+			}, pointmaterial, dashedmaterial);
+		scene.add(controlNet);
 	}
 
 	function initGui() {
 		gui = new dat.GUI();
 
-		var parameter = gui.add(cEditor.parameters, 't').min(0).max(1).step(0.01).name('Parameter (t)');
+		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.01).name('Parameter (t)');
 		parameter.onChange(function() {
 			cEditor.updateCurvePoint();
 		});
 
-		var params = { p: 3 };
+		var params = {
+			p: 3
+		};
 		var curveDegree = gui.add(params, 'p').min(1).max(4).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
 			curve.setDegree(params.p);
 			cEditor.update();
 			cEditor.updateCurvePoint();
+		});
+
+		var showPoint = gui.add(cEditor, 'showPoint').name('Show moving point');
+		showPoint.onChange(function() {
+			cEditor.setShow();
+		});
+
+		var showFrame = gui.add(cEditor, 'showFrame').name('Show Frenet frame');
+		showFrame.onChange(function() {
+			cEditor.setShow();
 		});
 		gui.open();
 	}
