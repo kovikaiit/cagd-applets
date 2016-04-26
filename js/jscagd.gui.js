@@ -96,22 +96,13 @@ ControlNet.prototype.onMouseDown = function(event) {
 
 // Curve drawing and edit/update handler
 
-var CurveEditor = function(curve) {
+var CurveEditor = function(curve, material, movingpointmaterial) {
 
 	THREE.Object3D.call(this);
 
 	this.curve = curve;
 
-	// Materials
-	this.material = new THREE.MeshLambertMaterial({
-		color: 0x444444,
-		shading: THREE.SmoothShading
-	});
 
-	this.movingpointmaterial = new THREE.MeshLambertMaterial({
-		color: 0x2e9800,
-		shading: THREE.SmoothShading
-	});
 
 	this.curve.dynamic = true;
 
@@ -124,7 +115,7 @@ var CurveEditor = function(curve) {
 	);
 
 	// Tube around curve
-	this.tubeMesh = new THREE.Mesh(this.tube, this.material);
+	this.tubeMesh = new THREE.Mesh(this.tube, material);
 	this.tubeMesh.dynamic = true;
 
 	this.curve.needsUpdate = true;
@@ -139,7 +130,7 @@ var CurveEditor = function(curve) {
 
 	var pos = this.curve.getPoint(this.t);
 	var geometry = new THREE.SphereGeometry(25, 32, 32);
-	this.curvePoint = new THREE.Mesh(geometry, this.movingpointmaterial);
+	this.curvePoint = new THREE.Mesh(geometry, movingpointmaterial);
 	this.curvePoint.position.set(pos.x, pos.y, pos.z);
 
 	if (this.showPoint) {
@@ -202,6 +193,7 @@ CurveEditor.prototype.updateCurvePoint = function() {
 };
 
 CurveEditor.prototype.setShow = function() {
+	var pos = this.curve.getPoint(this.t);
 	if (this.showPoint) {
 		this.curvePoint.position.set(pos.x, pos.y, pos.z);
 		this.add(this.curvePoint);
@@ -219,7 +211,7 @@ CurveEditor.prototype.setShow = function() {
 
 		this.bArrow.position.copy(pos);
 		this.bArrow.setDirection(frenetFrame.binormal);
-		
+
 		this.add(this.tArrow);
 		this.add(this.nArrow);
 		this.add(this.bArrow);
@@ -229,6 +221,70 @@ CurveEditor.prototype.setShow = function() {
 		this.remove(this.bArrow);
 	}
 };
+
+
+var BaseCurve = JSCAGD.ParametricCurve.create(
+	function(c_geom, i, width, height) {
+		this.i = typeof i !== 'undefined' ? i : 1;
+		this.c_geom = c_geom;
+		this.width = width;
+		this.height = height;
+	},
+
+	function(u) {
+		var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
+		var N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
+		//var N = JSCAGD.BernsteinBase.evalAll(this.c_geom.n, u);
+		if (span - this.c_geom.p  <=  this.i && this.i <= span) {
+			return new JSCAGD.Vector3(0, this.height * N[this.i - span + this.c_geom.p] - this.height/2, this.width * u - this.width/2);
+		} else {
+			return new JSCAGD.Vector3(0, - this.height/2, this.width * u - this.width/2);
+		}
+	}
+);
+
+
+
+
+var BaseFunctionCurves = function(geometry, width, height) {
+	THREE.Object3D.call(this);
+
+	this.width = width;
+	this.height = height;
+
+	this.baseCurves = [];
+
+
+	for (var i = 0; i < 5; i++) {
+		var material = new THREE.LineBasicMaterial({
+			color: "#"+((1<<24)*Math.random()|0).toString(16)
+		});
+		var baseCurve1 = new BaseCurve(geometry, i, width, height);
+		var curvegeometry = new THREE.Geometry();
+		curvegeometry.curve = baseCurve1;
+		curvegeometry.vertices = baseCurve1.getPoints( 100 );
+		curvegeometry.dynamic = true;
+
+		this.baseCurves.push(curvegeometry);
+		var curveObject = new THREE.Line(curvegeometry, material);
+		curveObject.dynamic = true;
+		this.add(curveObject);
+	}
+};
+
+BaseFunctionCurves.prototype = Object.create(THREE.Object3D.prototype);
+
+BaseFunctionCurves.prototype.constructor = BaseFunctionCurves;
+
+BaseFunctionCurves.prototype.update = function () {
+	for (var i = 0; i < this.baseCurves.length; i++) {
+		this.baseCurves[i].vertices = this.baseCurves[i].curve.getPoints( 100 );
+		this.baseCurves[i].verticesNeedUpdate = true;
+	}
+};
+
+
+
 
 
 
@@ -243,8 +299,12 @@ CurveEditor.prototype.setShow = function() {
 	var cEditor;
 	var orbit;
 
+	var knotScene, knotCamera, knotContainer, knotRenderer;
+
 	init();
+
 	render();
+
 
 	function init() {
 
@@ -290,8 +350,61 @@ CurveEditor.prototype.setShow = function() {
 		// GUI 
 		initGui();
 
+		initKnotEditor();
+
+
+
 		window.addEventListener('resize', onWindowResize, false);
 		renderer.render(scene, camera);
+
+	}
+
+
+	function initKnotEditor() {
+		var width = 500;
+		var height = 300;
+		// Scene and camera
+		knotScene = new THREE.Scene();
+		//knotCamera = new THREE.PerspectiveCamera(25, width / height, 1, 10000);
+		knotCamera = new THREE.OrthographicCamera( -width/2, width/2, height/2, -height/2, 10, 10000 );
+		knotCamera.position.set(-2000, 0, 0);
+		knotCamera.lookAt(new THREE.Vector3());
+
+		// Lights
+		var ambientLight = new THREE.AmbientLight(0xffffff);
+		knotScene.add(ambientLight);
+
+		// Renderer
+		knotRenderer = new THREE.WebGLRenderer({
+			antialias: true
+		});
+		knotRenderer.setPixelRatio(window.devicePixelRatio);
+		knotRenderer.setClearColor(0xffffff);
+		knotRenderer.setSize(width, height);
+
+		// OrbitControl
+		//var orbit2 = new THREE.OrbitControls(knotCamera, knotRenderer.domElement);
+
+		// Div container
+		knotContainer = document.getElementById('knotView');
+		knotContainer.appendChild(knotRenderer.domElement);
+		//knotContainer.addEventListener('mousedown', onDocumentMouseDown, false);
+
+		
+		var bsCurves = new BaseFunctionCurves(curve, width, height);
+
+		knotScene.add(bsCurves);
+		
+
+		//knotScene.add(new THREE.GridHelper(500, 100));
+
+		knotRenderer.render(knotScene, knotCamera);
+
+		var knotDragger = new KnotDragger(curve, function() {
+			cEditor.update();
+			bsCurves.update();
+			cEditor.updateCurvePoint();
+		});
 
 	}
 
@@ -320,8 +433,17 @@ CurveEditor.prototype.setShow = function() {
 			gapSize: 20
 		});
 
+		var material = new THREE.MeshLambertMaterial({
+			color: 0x444444,
+			shading: THREE.SmoothShading
+		});
 
-		cEditor = new CurveEditor(curve);
+		var movingpointmaterial = new THREE.MeshLambertMaterial({
+			color: 0x2e9800,
+			shading: THREE.SmoothShading
+		});
+
+		cEditor = new CurveEditor(curve, material, movingpointmaterial);
 		scene.add(cEditor);
 
 		controlNet = new ControlNet(curve, camera, renderer,
@@ -367,6 +489,7 @@ CurveEditor.prototype.setShow = function() {
 		requestAnimationFrame(render);
 		controlNet.render();
 		renderer.render(scene, camera);
+		knotRenderer.render(knotScene, knotCamera);
 	}
 
 

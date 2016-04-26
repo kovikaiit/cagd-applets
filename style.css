@@ -1,5 +1,52 @@
 
+body {
+    color: #ffffff;
+    background-color: #000000;
+    margin: 0px;
+    overflow: hidden;
+}
 
+html, body {
+    padding: 0px;
+
+}
+
+.dragger {
+    background-color:#000000;
+    color:white;
+    cursor:ew-resize;
+    position:absolute;
+    opacity:0.4;
+}
+
+canvas{
+    vertical-align: bottom;
+}
+
+#knotView {
+    position: static;
+    background: blue; 
+}
+
+
+#knotSlider {
+    position: static;
+    left: 0px;
+    top: 0px;
+    margin: 0px;
+    background: yellow; 
+    width: 500px;
+    height: 20px;
+}
+
+
+#knot {
+    position: absolute;
+    left: 50px;
+    top: 0px;
+    margin: 0px;
+    background: red; 
+}
 
 
 .dg.main.taller-than-window .close-button {

@@ -1,0 +1,1 @@
+debug(Math.min(1,2));
