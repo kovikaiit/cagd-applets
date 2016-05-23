@@ -1,8 +1,37 @@
 "use strict";
 
+
+    
+var PIXEL_RATIO = (function () {
+    var ctx = document.createElement("canvas").getContext("2d"),
+        dpr = window.devicePixelRatio || 1,
+        bsr = ctx.webkitBackingStorePixelRatio ||
+              ctx.mozBackingStorePixelRatio ||
+              ctx.msBackingStorePixelRatio ||
+              ctx.oBackingStorePixelRatio ||
+              ctx.backingStorePixelRatio || 1;
+
+    return dpr / bsr;
+})();
+
+
+var createHiDPICanvas = function(w, h, ratio) {
+    if (!ratio) { ratio = PIXEL_RATIO; }
+    var can = document.createElement("canvas");
+    can.width = w * ratio;
+    can.height = h * ratio;
+    can.style.width = w + "px";
+    can.style.height = h + "px";
+    can.getContext("2d").setTransform(ratio, 0, 0, ratio, 0, 0);
+    return can;
+};
+
+
+
 var KnotDragger = function(geometry, onChange) {
 
-	var size = 10;
+	var size = 8;
+	var height = 20;
 
 	var draggers = [];
 
@@ -15,7 +44,7 @@ var KnotDragger = function(geometry, onChange) {
 
 	var U = geometry.U;
 
-	var u_min, u_max;
+	var u_min, u_max, div_x;
 
 	var container = document.getElementById('knotSlider');
 
@@ -25,18 +54,19 @@ var KnotDragger = function(geometry, onChange) {
 		dragger.name = 'draggable-element';
 		dragger.className = "dragger";
 		dragger.style.width = size + 'px';
-		dragger.style.height = 20 + 'px';
+		dragger.style.height = height + 'px';
 		dragger.style.left = U[p + i + 1] * x_diff - size / 2 + 'px';
 		dragger.knotIndex = p + i + 1;
 
-		var canv = document.createElement("canvas");
+		var canv = createHiDPICanvas(2*size, 2*height);
 		var c2 = canv.getContext('2d');
-		c2.fillStyle = '#f00';
+		c2.fillStyle = '#2fa1d6';
 		c2.beginPath();
-		c2.moveTo(0, 0);
-		c2.lineTo(100, 50);
-		c2.lineTo(50, 100);
-		c2.lineTo(0, 90);
+		c2.moveTo(size/2, 0);
+		c2.lineTo(size, size/2);
+		c2.lineTo(size, height);
+		c2.lineTo(0, height);
+		c2.lineTo(0, size/2);
 		c2.closePath();
 		c2.fill();
 
@@ -57,7 +87,7 @@ var KnotDragger = function(geometry, onChange) {
 
 	function _drag_init(elem) {
 		selected = elem;
-		x_elem = x_pos - selected.offsetLeft;
+		x_elem = x_pos - selected.offsetLeft ;
 		u_min = U[selected.knotIndex - 1] * x_diff;
 		u_max = U[selected.knotIndex + 1] * x_diff;
 	}
@@ -70,7 +100,9 @@ var KnotDragger = function(geometry, onChange) {
 			var x_now = x_pos - x_elem;
 			x_now = Math.max(Math.min(x_now, u_max - size / 2), u_min - size / 2);
 			selected.style.left = (x_now) + 'px';
-			U[selected.knotIndex] = (x_now + size / 2) / x_diff;
+			var newKnot = (x_now + size / 2) / x_diff;
+			//U[selected.knotIndex] = newKnot;
+			U[selected.knotIndex] = Math.max(Math.min(newKnot, 1- 0.000000000001), 0.0000000000001);
 			onChange();
 
 		}

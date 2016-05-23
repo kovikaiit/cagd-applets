@@ -12,11 +12,15 @@ html, body {
 }
 
 .dragger {
-    background-color:#000000;
-    color:white;
     cursor:ew-resize;
     position:absolute;
-    opacity:0.4;
+    opacity: 0.7;
+    padding: 0px;
+    margin: 0px;
+}
+
+.cr .number .knotli{
+    height: 320;
 }
 
 canvas{
@@ -24,28 +28,26 @@ canvas{
 }
 
 #knotView {
-    position: static;
-    background: blue; 
+    position: relative;
 }
 
 
 #knotSlider {
-    position: static;
+    position: relative;
     left: 0px;
     top: 0px;
     margin: 0px;
-    background: yellow; 
+    background: #eee; 
     width: 500px;
     height: 20px;
 }
 
 
 #knot {
-    position: absolute;
-    left: 50px;
+    position: relative;
+    left: 0px;
     top: 0px;
     margin: 0px;
-    background: red; 
 }
 
 

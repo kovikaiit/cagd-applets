@@ -19,6 +19,8 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 	this.camera = camera;
 	this.renderer = renderer;
 	this.mouse = new THREE.Vector2();
+	this.dashedmaterial = dashedmaterial;
+	this.pointmaterial = pointmaterial;
 
 
 	// Control point moving
@@ -92,6 +94,32 @@ ControlNet.prototype.onMouseDown = function(event) {
 	}
 };
 
+ControlNet.prototype.reset = function() {
+	for( var i = this.children.length - 1; i >= 0; i--) { var obj = this.children[i];
+     this.remove(obj); }
+	// Control polygon for curves
+	if (this.geometry.controlNetType === 'curve') {
+		this.controlPolygon = new THREE.Geometry();
+		this.controlPolygon.vertices = this.geometry.P;
+		this.controlPolygon.computeLineDistances();
+		this.controlPolygonPath = new THREE.Line(this.controlPolygon, this.dashedmaterial);
+		this.controlPolygon.dynamic = true;
+		this.controlPolygonPath.dynamic = true;
+		this.add(this.controlPolygonPath);
+	}
+
+	this.controlPoints = [];
+
+	// Control points
+	for (i = 0; i <= this.geometry.n; i++) {
+		var spgeometry = new THREE.SphereGeometry(20, 32, 32);
+		var sphere = new THREE.Mesh(spgeometry, this.pointmaterial);
+		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
+		this.controlPoints.push(sphere);
+		this.add(sphere);
+	}
+};
+
 
 
 // Curve drawing and edit/update handler
@@ -125,7 +153,8 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	this.add(this.tubeMesh);
 
 	this.t = 0.5;
-	this.showFrame = true;
+	this.d = 0.1;
+	
 	this.showPoint = true;
 
 	var pos = this.curve.getPoint(this.t);
@@ -137,17 +166,7 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 		this.add(this.curvePoint);
 	}
 
-	var frenetFrame = this.curve.getFrenetFrame(this.t);
-
-	this.tArrow = new THREE.ArrowHelper(frenetFrame.tangent, pos, 200, 0x000000);
-	this.nArrow = new THREE.ArrowHelper(frenetFrame.normal, pos, 200, 0x000000);
-	this.bArrow = new THREE.ArrowHelper(frenetFrame.binormal, pos, 200, 0x000000);
-
-	if (this.showFrame) {
-		this.add(this.tArrow);
-		this.add(this.nArrow);
-		this.add(this.bArrow);
-	}
+	
 
 };
 
@@ -177,19 +196,6 @@ CurveEditor.prototype.updateCurvePoint = function() {
 	if (this.showPoint) {
 		this.curvePoint.position.set(pos.x, pos.y, pos.z);
 	}
-
-	if (this.showFrame) {
-		var frenetFrame = this.curve.getFrenetFrame(this.t);
-
-		this.tArrow.position.copy(pos);
-		this.tArrow.setDirection(frenetFrame.tangent);
-
-		this.nArrow.position.copy(pos);
-		this.nArrow.setDirection(frenetFrame.normal);
-
-		this.bArrow.position.copy(pos);
-		this.bArrow.setDirection(frenetFrame.binormal);
-	}
 };
 
 CurveEditor.prototype.setShow = function() {
@@ -199,26 +205,6 @@ CurveEditor.prototype.setShow = function() {
 		this.add(this.curvePoint);
 	} else {
 		this.remove(this.curvePoint);
-	}
-	if (this.showFrame) {
-		var frenetFrame = this.curve.getFrenetFrame(this.t);
-
-		this.tArrow.position.copy(pos);
-		this.tArrow.setDirection(frenetFrame.tangent);
-
-		this.nArrow.position.copy(pos);
-		this.nArrow.setDirection(frenetFrame.normal);
-
-		this.bArrow.position.copy(pos);
-		this.bArrow.setDirection(frenetFrame.binormal);
-
-		this.add(this.tArrow);
-		this.add(this.nArrow);
-		this.add(this.bArrow);
-	} else {
-		this.remove(this.tArrow);
-		this.remove(this.nArrow);
-		this.remove(this.bArrow);
 	}
 };
 
@@ -375,7 +361,7 @@ BaseFunctionCurves.prototype.update = function () {
 		// GUI 
 		initGui();
 
-		initKnotEditor();
+		//initKnotEditor();
 
 
 
@@ -444,7 +430,7 @@ BaseFunctionCurves.prototype.update = function () {
 		var p6 = new THREE.Vector3(300.0, 200, -100.0);
 		var P = [p0, p1, p2, p3, p4, p5, p6];
 		var n = 6;
-		curve = new JSCAGD.BsplineCurve(P, n, 3);
+		curve = new JSCAGD.MeanCurve(P, n, 0.1);
 
 
 		// Materials
@@ -484,6 +470,13 @@ BaseFunctionCurves.prototype.update = function () {
 	function initGui() {
 		gui = new dat.GUI({ width: 512, resizable : false });
 
+		var parameterD = gui.add( cEditor, 'd' ).min(0).max(1).step(0.01).name('d');
+		parameterD.onChange(function(value) {
+			curve.setD(cEditor.d);
+			cEditor.update();
+			cEditor.updateCurvePoint();
+		});
+
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.01).name('Parameter (t)');
 		parameter.onChange(function() {
 			cEditor.updateCurvePoint();
@@ -492,22 +485,16 @@ BaseFunctionCurves.prototype.update = function () {
 		var params = {
 			p: 3
 		};
-		var curveDegree = gui.add(params, 'p').min(1).max(4).step(1).name('Degree (p)');
-		curveDegree.onChange(function() {
-			curve.setDegree(params.p);
-			cEditor.update();
-			cEditor.updateCurvePoint();
-		});
 
 		var showPoint = gui.add(cEditor, 'showPoint').name('Show moving point');
 		showPoint.onChange(function() {
 			cEditor.setShow();
 		});
 
-		var showFrame = gui.add(cEditor, 'showFrame').name('Show Frenet frame');
-		showFrame.onChange(function() {
-			cEditor.setShow();
-		});
+		var insertKnot = { add:function(){ curve.insertKnot(cEditor.t); cEditor.update(); controlNet.reset(); }};
+
+		gui.add(insertKnot,'add');
+
 		gui.open();
 
 		var x = document.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
@@ -528,6 +515,10 @@ BaseFunctionCurves.prototype.update = function () {
 			}
 		 });
 		customLi.style.height = 320 + 'px';
+
+
+
+
 	}
 
 
@@ -535,7 +526,7 @@ BaseFunctionCurves.prototype.update = function () {
 		requestAnimationFrame(render);
 		controlNet.render();
 		renderer.render(scene, camera);
-		knotRenderer.render(knotScene, knotCamera);
+		//knotRenderer.render(knotScene, knotCamera);
 	}
 
 

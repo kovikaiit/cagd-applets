@@ -205,7 +205,7 @@ JSCAGD.BsplineBase.evalNonWanishDer = function(U, n, p, u, i) {
 		ndu[j][j] = saved;
 	}
 	for (j = 0; j <= p; j++) {
-		ders[0][j] = ndu[j][this.p];
+		ders[0][j] = ndu[j][p];
 	}
 	for (r = 0; r <= p; r++) {
 		s1 = 0;
