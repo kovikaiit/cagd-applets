@@ -10,7 +10,7 @@ var JSCAGD = JSCAGD || {};
 
 
 JSCAGD.Vector3 = THREE.Vector3;
-
+JSCAGD.Vector2 = THREE.Vector2;
 
 JSCAGD.ParametricCurve = THREE.Curve;
 

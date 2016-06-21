@@ -153,7 +153,7 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	this.add(this.tubeMesh);
 
 	this.t = 0.5;
-	this.d = 0.1;
+	this.d = 0.2;
 	
 	this.showPoint = true;
 
@@ -220,16 +220,14 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 	function(u) {
 		//u = typeof u !== 'undefined' ? u : 0.5;
 		//console.log(u);
-		var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
-		var N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
+		//var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
+		var N = JSCAGD.MeanBase.evalAllGeneralCorner2(u, this.c_geom.knot, this.c_geom.d);
 		//var N = JSCAGD.BsplineBase.evalNonWanishDer(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 
 		//var N = JSCAGD.BernsteinBase.evalAll(this.c_geom.n, u);
-		if (span - this.c_geom.p  <=  this.i && this.i <= span) {
-			return new JSCAGD.Vector3(0, this.height * N[this.i - span + this.c_geom.p] - this.height/2, this.width * u - this.width/2);
-		} else {
-			return new JSCAGD.Vector3(0, - this.height/2, this.width * u - this.width/2);
-		}
+		
+			return new JSCAGD.Vector3(0, this.height * N[this.i] - this.height/2, this.width * u - this.width/2);
+	
 	}
 );
 
@@ -278,8 +276,8 @@ BaseFunctionCurves.prototype.update = function () {
 		//var u_min = 0;
 		//var u_max = 1;
 		
-		var u_min = this.geometry.U[i ];
-		var u_max = this.geometry.U[i + this.geometry.p + 1];
+		var u_min = 0;
+		var u_max = 1;
 		var samples = 99;
 		var diff = (u_max - u_min) / (samples );
 		var u = u_min;
@@ -309,6 +307,7 @@ BaseFunctionCurves.prototype.update = function () {
 	var curve;
 	var cEditor;
 	var orbit;
+	var bsCurves;
 
 	var knotScene, knotCamera, knotContainer, knotRenderer;
 
@@ -361,7 +360,7 @@ BaseFunctionCurves.prototype.update = function () {
 		// GUI 
 		initGui();
 
-		//initKnotEditor();
+		initKnotEditor();
 
 
 
@@ -402,7 +401,7 @@ BaseFunctionCurves.prototype.update = function () {
 		//knotContainer.addEventListener('mousedown', onDocumentMouseDown, false);
 
 		
-		var bsCurves = new BaseFunctionCurves(curve, width, height);
+		bsCurves = new BaseFunctionCurves(curve, width, height);
 
 		knotScene.add(bsCurves);
 		
@@ -411,7 +410,7 @@ BaseFunctionCurves.prototype.update = function () {
 
 		knotRenderer.render(knotScene, knotCamera);
 
-		var knotDragger = new KnotDragger(curve, function() {
+		var knotDragger = new KnotDraggerMean(curve, function() {
 			cEditor.update();
 			bsCurves.update();
 			cEditor.updateCurvePoint();
@@ -430,7 +429,7 @@ BaseFunctionCurves.prototype.update = function () {
 		var p6 = new THREE.Vector3(300.0, 200, -100.0);
 		var P = [p0, p1, p2, p3, p4, p5, p6];
 		var n = 6;
-		curve = new JSCAGD.MeanCurve(P, n, 0.1);
+		curve = new JSCAGD.MeanCurve(P, n, 0.2);
 
 
 		// Materials
@@ -470,11 +469,12 @@ BaseFunctionCurves.prototype.update = function () {
 	function initGui() {
 		gui = new dat.GUI({ width: 512, resizable : false });
 
-		var parameterD = gui.add( cEditor, 'd' ).min(0).max(1).step(0.01).name('d');
+		var parameterD = gui.add( cEditor, 'd' ).min(0).max(10).step(0.01).name('d');
 		parameterD.onChange(function(value) {
 			curve.setD(cEditor.d);
 			cEditor.update();
 			cEditor.updateCurvePoint();
+			bsCurves.update();
 		});
 
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.01).name('Parameter (t)');
@@ -526,7 +526,7 @@ BaseFunctionCurves.prototype.update = function () {
 		requestAnimationFrame(render);
 		controlNet.render();
 		renderer.render(scene, camera);
-		//knotRenderer.render(knotScene, knotCamera);
+		knotRenderer.render(knotScene, knotCamera);
 	}
 
 
