@@ -48,6 +48,9 @@ var KnotDragger = function(geometry, onChange) {
 
 	var container = document.getElementById('knotSlider');
 
+	while (container.firstChild) {
+	    container.removeChild(container.firstChild);
+	}
 
 	for (var i = 0; i < n - p; i++) {
 		var dragger = document.createElement("div");
@@ -118,7 +121,6 @@ var KnotDragger = function(geometry, onChange) {
 	document.onmouseup = _destroy;
 
 };
-
 
 
 

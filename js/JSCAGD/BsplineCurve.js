@@ -143,8 +143,10 @@ JSCAGD.BsplineCurve.prototype.getFrenetFrame = function(u) {
 
 
 
-JSCAGD.BsplineCurve.prototype.insertKnot = function(u, k, s, r) {
-
+JSCAGD.BsplineCurve.prototype.insertKnot = function(u) {
+	var k = JSCAGD.KnotVector.findSpan(this.U, this.n, this.p, u);
+	var r = 1;
+	var s = this.p-r;
 	var np = this.n;
 	var p = this.p;
 	var UP = this.U;

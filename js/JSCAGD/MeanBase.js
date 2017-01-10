@@ -94,15 +94,25 @@ JSCAGD.MeanBase.evalAllGeneralCorner2 = function(u, knot, d) {
 	var V0 = [];
 	var d0 = 0.1;
 	for (i = 0; i < n; i++) {
-		V0.push(new JSCAGD.Vector2(knot[i], d0));
+		if (i==0 || i==n-1) {
+			V0.push(new JSCAGD.Vector2(knot[i], 0))
+		} else {
+			V0.push(new JSCAGD.Vector2(knot[i], 0.1*d));
+		}
+		
 	}
 	for (i = 0; i < n; i++) {
-		V0.push(new JSCAGD.Vector2(knot[n-i-1], -d0));
+		if (i==0 || i==n-1) {
+			V0.push(new JSCAGD.Vector2(knot[n-i-1], 0))
+		} else {
+			V0.push(new JSCAGD.Vector2(knot[n-i-1], -0.1*d));
+		}
+		
 	}
 	
 	
 	var v = new JSCAGD.Vector2(u, 0);
-	var meanValues = JSCAGD.MeanValue.eval(V0, v);
+	var meanValues = JSCAGD.MeanValue.evalBuhera2(V0, v);
 	
 
 	//var h = d *u *(1-u);
@@ -116,19 +126,19 @@ JSCAGD.MeanBase.evalAllGeneralCorner2 = function(u, knot, d) {
 
 
 	//var h = d *u *(1-u);
-	var Vd = [];
-	for (i = 0; i < n; i++) {
-		Vd.push(new JSCAGD.Vector2(knot[i], d * meanValues[i]));
-	}
-	for (i = 0; i < n; i++) {
-		Vd.push(new JSCAGD.Vector2(knot[n-i-1], - d * meanValues[n-i-1]));
-	}
+	//var Vd = [];
+	//for (i = 0; i < n; i++) {
+	//	Vd.push(new JSCAGD.Vector2(knot[i], d * meanValues[i]));
+	//}
+	//for (i = 0; i < n; i++) {
+	//	Vd.push(new JSCAGD.Vector2(knot[n-i-1], - d * meanValues[n-i-1]));
+	//}
 	
-	var v1 = new JSCAGD.Vector2(u, 0);
-	var meanValues1 = JSCAGD.MeanValue.eval(Vd, v1);
+	//var v1 = new JSCAGD.Vector2(u, 0);
+	//var meanValues1 = JSCAGD.MeanValue.eval(Vd, v1);
 	var basis1 = [];
 	for (i = 0; i < n; i++) {
-		basis1[i] = meanValues1[i] + meanValues1[2 * n-i-1];
+		basis1[i] = meanValues[i] + meanValues[2 * n-i-1];
 	}
 	return basis1;
 };

@@ -4,6 +4,9 @@
 /* globals THREE */
 /* globals dat */
 
+var is2D = true;
+var is3D = !is2D;
+
 // General control net handler for curves and surfaces
 
 var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, dashedmaterial) {
@@ -20,16 +23,7 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 	this.renderer = renderer;
 	this.mouse = new THREE.Vector2();
 
-
-	// Control point moving
-	this.control = new THREE.TransformControls(camera, renderer.domElement);
-	this.control.size = 0.5;
-	this.control.addEventListener('change', function() {
-		that.update();
-		onChange(); //undefined??
-	});
-
-
+	
 	// Raycasting for selection
 	this.raycaster = new THREE.Raycaster();
 	this.raycaster.params.Points.threshold = 0.1;
@@ -54,6 +48,19 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 		this.controlPoints.push(sphere);
 		this.add(sphere);
 	}
+
+	// Control point moving
+	if(is3D) {
+		this.control = new THREE.TransformControls(camera, renderer.domElement);
+		this.control.size = 0.5;
+	} else {
+		this.control = new THREE.DragControls( this.controlPoints, camera, renderer.domElement );
+	}
+
+	this.control.addEventListener('change', function() {
+		that.update();
+		onChange(); //undefined??
+	});
 };
 
 ControlNet.prototype = Object.create(THREE.Object3D.prototype);
@@ -73,22 +80,27 @@ ControlNet.prototype.update = function() {
 };
 
 ControlNet.prototype.render = function() {
-	this.control.update();
+	if(is3D) {
+		this.control.update();
+	}
+	
 };
 
 ControlNet.prototype.onMouseDown = function(event) {
-	this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-	this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-	this.raycaster.setFromCamera(this.mouse, this.camera);
-	var intersects = this.raycaster.intersectObjects(this.controlPoints);
-	if (intersects.length > 0) {
-		this.SELECTED = intersects[0].object;
-		this.add(this.control);
-		this.control.attach(this.SELECTED);
-	} else if (this.SELECTED !== null) {
-		this.control.detach(this.SELECTED);
-		this.remove(this.control);
-		this.SELECTED = null;
+	if(is3D) {
+		this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+		this.raycaster.setFromCamera(this.mouse, this.camera);
+		var intersects = this.raycaster.intersectObjects(this.controlPoints);
+		if (intersects.length > 0) {
+			this.SELECTED = intersects[0].object;
+			this.add(this.control);
+			this.control.attach(this.SELECTED);
+		} else if (this.SELECTED !== null) {
+			this.control.detach(this.SELECTED);
+			this.remove(this.control);
+			this.SELECTED = null;
+		}
 	}
 };
 
@@ -101,8 +113,6 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	THREE.Object3D.call(this);
 
 	this.curve = curve;
-
-
 
 	this.curve.dynamic = true;
 
@@ -257,12 +267,14 @@ var BaseFunctionCurves = function(geometry, width, height) {
 	this.height = height;
 	this.geometry = geometry;
 
+	this.objcontainer = new THREE.Object3D();
 	this.baseCurves = [];
 
 
 	for (var i = 0; i <= geometry.n; i++) {
 		var material = new THREE.LineBasicMaterial({
-			color: "#"+((1<<24)*Math.random()|0).toString(16)
+			//color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
+			color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
 		});
 		var baseCurve1 = new BaseCurve(geometry, i, width, height);
 		var curvegeometry = new THREE.Geometry();
@@ -273,9 +285,11 @@ var BaseFunctionCurves = function(geometry, width, height) {
 		this.baseCurves.push(curvegeometry);
 		var curveObject = new THREE.Line(curvegeometry, material);
 		curveObject.dynamic = true;
-		this.add(curveObject);
-		this.update();
+		this.objcontainer.add(curveObject);
+		//objcontainer.update();
 	}
+	this.add(this.objcontainer);
+	this.update();
 
 	var curvegeometry = new THREE.Geometry();
 	curvegeometry.dynamic = true;
@@ -287,6 +301,7 @@ BaseFunctionCurves.prototype = Object.create(THREE.Object3D.prototype);
 BaseFunctionCurves.prototype.constructor = BaseFunctionCurves;
 
 BaseFunctionCurves.prototype.update = function () {
+
 	for (var i = 0; i < this.baseCurves.length; i++) {
 		//this.baseCurves[i].vertices = this.baseCurves[i].curve.getPoints( 10 );
 		//var u_min = 0;
@@ -306,9 +321,39 @@ BaseFunctionCurves.prototype.update = function () {
 		//this.baseCurves[i].vertices = this.baseCurves[i].curve.getPoints( 100 );
 		this.baseCurves[i].verticesNeedUpdate = true;
 	}
+	
 };
 
+BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
+	this.geometry = newgeometry;
+
+	this.baseCurves = [];
+	this.remove(this.objcontainer);
+	this.objcontainer = new THREE.Object3D();
+
+	for (var i = 0; i <= this.geometry.n; i++) {
+		var material = new THREE.LineBasicMaterial({
+			color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
+		});
+		var baseCurve1 = new BaseCurve(this.geometry, i, this.width, this.height);
+		var curvegeometry = new THREE.Geometry();
+		curvegeometry.curve = baseCurve1;
+		curvegeometry.vertices = baseCurve1.getPoints( 99 );
+		curvegeometry.dynamic = true;
+
+		this.baseCurves.push(curvegeometry);
+		var curveObject = new THREE.Line(curvegeometry, material);
+		curveObject.dynamic = true;
+		this.objcontainer.add(curveObject);
+	}
+	this.add(this.objcontainer);
+	this.update();
+
+	var curvegeometry = new THREE.Geometry();
+	curvegeometry.dynamic = true;
+	this.update();
+};
 
 
 
@@ -323,8 +368,11 @@ BaseFunctionCurves.prototype.update = function () {
 	var curve;
 	var cEditor;
 	var orbit;
+	var bsCurves;
 
 	var knotScene, knotCamera, knotContainer, knotRenderer;
+
+	var that = this;
 
 	init();
 
@@ -335,23 +383,42 @@ BaseFunctionCurves.prototype.update = function () {
 
 		// Scene and camera
 		scene = new THREE.Scene();
-		camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 10000);
-		camera.position.set(2000, 800, 1300);
-		camera.lookAt(new THREE.Vector3());
+		var camera3D = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 10000);
+		camera3D.position.set(2000, 800, 1300);
+		camera3D.lookAt(new THREE.Vector3());
+
+		var camera2D = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
+				camera2D.position.x = 0;
+				camera2D.position.y = 200;
+				camera2D.position.z = 0;
+
+		if (is2D) {
+			camera = camera2D;		
+		} else {
+			camera = camera3D;
+		}
+		
 
 		// Grid
-		scene.add(new THREE.GridHelper(500, 100));
-		scene.fog = new THREE.Fog(0xe0e0e0, 150, 10000);
+		if (is3D) {
+			scene.add(new THREE.GridHelper(500, 100));
+			scene.fog = new THREE.Fog(0xe0e0e0, 150, 10000);
+		}
+		
 
 		// Lights
 		var ambientLight = new THREE.AmbientLight(0xffffff);
 		scene.add(ambientLight);
-		var directionalLight = new THREE.DirectionalLight(0xffffff);
-		directionalLight.position.x = 1;
-		directionalLight.position.y = 0.2;
-		directionalLight.position.z = -0.2;
-		directionalLight.position.normalize();
-		scene.add(directionalLight);
+
+		if (is3D) {
+			var directionalLight = new THREE.DirectionalLight(0xffffff);
+			directionalLight.position.x = 1;
+			directionalLight.position.y = 0.2;
+			directionalLight.position.z = -0.2;
+			directionalLight.position.normalize();
+			scene.add(directionalLight);
+		}
+		
 
 		// Renderer
 		renderer = new THREE.WebGLRenderer({
@@ -367,8 +434,10 @@ BaseFunctionCurves.prototype.update = function () {
 		container.addEventListener('mousedown', onDocumentMouseDown, false);
 
 		// OrbitControl
-		orbit = new THREE.OrbitControls(camera, renderer.domElement);
-
+		if (is3D) {
+			orbit = new THREE.OrbitControls(camera, renderer.domElement);
+		} 
+		
 		// Curve
 		initCurve();
 
@@ -386,6 +455,7 @@ BaseFunctionCurves.prototype.update = function () {
 
 
 	function initKnotEditor() {
+
 		var width = 500;
 		var height = 300;
 		// Scene and camera
@@ -416,7 +486,7 @@ BaseFunctionCurves.prototype.update = function () {
 		//knotContainer.addEventListener('mousedown', onDocumentMouseDown, false);
 
 		
-		var bsCurves = new BaseFunctionCurves(curve, width, height);
+		bsCurves = new BaseFunctionCurves(curve, width, height);
 
 		knotScene.add(bsCurves);
 		
@@ -434,16 +504,21 @@ BaseFunctionCurves.prototype.update = function () {
 	}
 
 	function initCurve() {
+
 		// Curve parameters
-		var p0 = new THREE.Vector3(-500.0, -100, -500.0);
-		var p1 = new THREE.Vector3(-500.0, 50, 0.0);
-		var p2 = new THREE.Vector3(500.0, -50.0, 0.0);
-		var p3 = new THREE.Vector3(500.0, 100, 500.0);
-		var p4 = new THREE.Vector3(300.0, -100, 0.0);
-		var p5 = new THREE.Vector3(-200.0, 100, 100.0);
-		var p6 = new THREE.Vector3(300.0, 200, -100.0);
-		var P = [p0, p1, p2, p3, p4, p5, p6];
-		var n = 6;
+		var p0 = new THREE.Vector3(-500.0,500.0, 0.0);
+		var p1 = new THREE.Vector3(-500.0, 0.0, 0.0);
+		var p2 = new THREE.Vector3(-200.0, -50.0, 0.0);
+		var p3 = new THREE.Vector3(0.0, 0.0, 0.0);
+		var p4 = new THREE.Vector3(0.0, 250.0, 0.0);
+		var p5 = new THREE.Vector3(-200.0, 400.0, 0.0);
+		var p6 = new THREE.Vector3(-300.0, 200, 0.0);
+		var p7 = new THREE.Vector3(-300.0, 200, 0.0);
+		var p8 = new THREE.Vector3(-300.0, 300, 0.0);
+		var p9 = new THREE.Vector3(-300.0, 400, 0.0);
+		var p10 = new THREE.Vector3(-300.0, 500, 0.0);
+		var P = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10];
+		var n = 10;
 		curve = new JSCAGD.BsplineCurve(P, n, 3);
 
 
@@ -479,9 +554,11 @@ BaseFunctionCurves.prototype.update = function () {
 				cEditor.updateCurvePoint();
 			}, pointmaterial, dashedmaterial);
 		scene.add(controlNet);
+
 	}
 
 	function initGui() {
+
 		gui = new dat.GUI({ width: 512, resizable : false });
 
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.01).name('Parameter (t)');
@@ -492,11 +569,17 @@ BaseFunctionCurves.prototype.update = function () {
 		var params = {
 			p: 3
 		};
-		var curveDegree = gui.add(params, 'p').min(1).max(4).step(1).name('Degree (p)');
+		var curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
 			curve.setDegree(params.p);
 			cEditor.update();
 			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
 		});
 
 		var showPoint = gui.add(cEditor, 'showPoint').name('Show moving point');
@@ -509,6 +592,19 @@ BaseFunctionCurves.prototype.update = function () {
 			cEditor.setShow();
 		});
 		gui.open();
+
+		var insertKnot = { add:function(){ 
+			curve.insertKnot(cEditor.t); 
+			cEditor.update(); 
+			controlNet.reset(); 
+			bsCurves.resetGeometry(curve);
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
+		}};
+		gui.add(insertKnot,'add');
 
 		var x = document.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
 		var customLi = document.createElement("li");
@@ -528,26 +624,42 @@ BaseFunctionCurves.prototype.update = function () {
 			}
 		 });
 		customLi.style.height = 320 + 'px';
+
 	}
 
 
 	function render() {
+
 		requestAnimationFrame(render);
 		controlNet.render();
 		renderer.render(scene, camera);
 		knotRenderer.render(knotScene, knotCamera);
+
 	}
 
 
 	function onDocumentMouseDown(event) {
+
 		event.preventDefault();
 		controlNet.onMouseDown(event);
+
 	}
 
 	function onWindowResize() {
-		camera.aspect = window.innerWidth / window.innerHeight;
-		camera.updateProjectionMatrix();
+
+		if(is3D) {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+		} else {
+			camera.left = window.innerWidth / - 2;
+			camera.right = window.innerWidth / 2;
+			camera.top = window.innerHeight / 2;
+			camera.bottom = window.innerHeight / - 2;
+			camera.updateProjectionMatrix();
+		}
+		
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		render();
+
 	}
 })();
