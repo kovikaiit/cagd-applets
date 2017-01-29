@@ -99,7 +99,7 @@ THREE.DragControls = function ( _objects, _camera, _domElement ) {
 			if ( _hovered !== null ) {
 
 				scope.dispatchEvent( { type: 'hoveroff', object: _hovered } );
-				scope.dispatchEvent( changeEvent );
+				//scope.dispatchEvent( changeEvent );
 				_domElement.style.cursor = 'auto';
 				_hovered = null;
 

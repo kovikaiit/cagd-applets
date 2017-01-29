@@ -144,7 +144,7 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 
 	this.curve = curve;
 
-
+	this.curvatureFence = new THREE.Object3D();
 
 	this.curve.dynamic = true;
 
@@ -180,6 +180,45 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 		this.add(this.curvePoint);
 	}
 
+
+	this.fenceResolution = 600;
+	var material = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
+	this.curvatureFence = new THREE.Object3D();
+	this.fenceLines = [];
+	var ti = 0;
+	for (var i = 0; i < this.fenceResolution-1; i++) {
+		var tan = this.curve.getTangent(ti);
+
+		var curvepoint = this.curve.getPoint(ti);
+		var fencepoint = curvepoint.clone();
+		var curvature = Math.max(Math.min(10*JSCAGD.NumDer.getCurvature(this.curve, ti), 1),-1);
+
+		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
+
+		var bgeometry = new THREE.BufferGeometry();
+
+		var positions = new Float32Array( 2 * 3 ); // 3 vertices per point
+		bgeometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+		
+		var line = new THREE.Line( bgeometry,  material );
+		var positions = line.geometry.attributes.position.array;
+		positions[0] = curvepoint.x;
+		positions[1] = curvepoint.y;
+		positions[2] = curvepoint.z;
+
+		positions[3] = fencepoint.x;
+		positions[4] = fencepoint.y;
+		positions[5] = fencepoint.z;
+
+		//var geometry = new THREE.Geometry();
+		//geometry.vertices.push(this.curve.getPoint(ti));
+		//geometry.vertices.push(fencepoint);
+		//var line = new THREE.Line(geometry, material);
+		this.curvatureFence.add(line);
+		this.fenceLines[i] = line;
+		ti += 1/this.fenceResolution;
+	}
+	this.add(this.curvatureFence);
 };
 
 CurveEditor.prototype = Object.create(THREE.Object3D.prototype);
@@ -195,11 +234,38 @@ CurveEditor.prototype.update = function() {
 		8, //radiusSegments
 		false //closed
 	);
+
 	this.tube.dynamic = true;
 	this.tubeMesh.geometry.dispose();
 	this.tubeMesh.geometry = this.tube;
 	this.tubeMesh.geometry.verticesNeedUpdate = true;
 	this.tubeMesh.verticesNeedUpdate = true;
+
+	var ti = 0;
+	for (var i = 0; i < this.fenceResolution-1; i++) {
+		ti += 1/this.fenceResolution;
+		var tan = this.curve.getTangent(ti);
+
+		var curvepoint = this.curve.getPoint(ti);
+		var fencepoint = curvepoint.clone();
+		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+
+		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
+
+		
+		var line = this.fenceLines[i];
+		var positions = line.geometry.attributes.position.array;
+		positions[0] = curvepoint.x;
+		positions[1] = curvepoint.y;
+		positions[2] = curvepoint.z;
+
+		positions[3] = fencepoint.x;
+		positions[4] = fencepoint.y;
+		positions[5] = fencepoint.z;
+		line.geometry.attributes.position.needsUpdate = true; 
+
+	}
+
 };
 
 CurveEditor.prototype.updateCurvePoint = function() {
@@ -233,7 +299,8 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 		//u = typeof u !== 'undefined' ? u : 0.5;
 		//console.log(u);
 		//var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
-		var N = JSCAGD.MeanBase.evalAllGeneralCorner2(u, this.c_geom.knot, this.c_geom.d);
+		var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
+		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
 		//var N = JSCAGD.BsplineBase.evalNonWanishDer(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 
 		//var N = JSCAGD.BernsteinBase.evalAll(this.c_geom.n, u);
@@ -255,10 +322,11 @@ var BaseFunctionCurves = function(geometry, width, height) {
 
 	this.baseCurves = [];
 
-
+	//var i = 3;
 	for (var i = 0; i <= geometry.n; i++) {
 		var material = new THREE.LineBasicMaterial({
-			color: "#"+((1<<24)*Math.random()|0).toString(16)
+			//color: "#"+((1<<24)*Math.random()|0).toString(16)
+			color: "#000000", linewidth: 2 
 		});
 		var baseCurve1 = new BaseCurve(geometry, i, width, height);
 		var curvegeometry = new THREE.Geometry();
@@ -320,7 +388,7 @@ BaseFunctionCurves.prototype.update = function () {
 	var cEditor;
 	var orbit;
 	var bsCurves;
-	var getCurvature;
+	//var getCurvature;
 
 	var knotScene, knotCamera, knotContainer, knotRenderer;
 
@@ -413,8 +481,8 @@ BaseFunctionCurves.prototype.update = function () {
 		knotCamera.lookAt(new THREE.Vector3());
 
 		// Lights
-		var ambientLight = new THREE.AmbientLight(0xffffff);
-		knotScene.add(ambientLight);
+		//var ambientLight = new THREE.AmbientLight(0xffffff);
+		//knotScene.add(ambientLight);
 
 		// Renderer
 		knotRenderer = new THREE.WebGLRenderer({
@@ -452,21 +520,21 @@ BaseFunctionCurves.prototype.update = function () {
 
 	function initCurve() {
 		// Curve parameters
-		var p0 = new THREE.Vector3(-500.0,500.0, 0.0);
-		var p1 = new THREE.Vector3(-500.0, 0.0, 0.0);
-		var p2 = new THREE.Vector3(-200.0, -50.0, 0.0);
+		var p0 = new THREE.Vector3(-600.0,0.0, 0.0);
+		var p1 = new THREE.Vector3(-400.0, 300.0, 0.0);
+		var p2 = new THREE.Vector3(-200.0, 0.0, 0.0);
 		var p3 = new THREE.Vector3(0.0, 0.0, 0.0);
-		var p4 = new THREE.Vector3(0.0, 250.0, 0.0);
-		var p5 = new THREE.Vector3(-200.0, 400.0, 0.0);
-		var p6 = new THREE.Vector3(-300.0, 200, 0.0);
+		var p4 = new THREE.Vector3(100.0, 200.0, 0.0);
+		var p5 = new THREE.Vector3(0.0, 350.0, 0.0);
+		var p6 = new THREE.Vector3(-200.0, 350, 0.0);
 		var p7 = new THREE.Vector3(-300.0, 200, 0.0);
 		var p8 = new THREE.Vector3(-300.0, 300, 0.0);
 		var p9 = new THREE.Vector3(-300.0, 400, 0.0);
 		var p10 = new THREE.Vector3(-300.0, 500, 0.0);
-		var P = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10];
-		var n = 10;
+		var P = [p0, p1, p2, p3, p4, p5, p6];
+		var n = 6;
 		curve = new JSCAGD.MeanCurve(P, n, 0.2);
-		getCurvature = JSCAGD.NumDer.getCurvature(curve.getPoint);
+		//getCurvature = JSCAGD.NumDer.getCurvature(curve.getPoint);
 
 		// Materials
 		var pointmaterial = new THREE.MeshLambertMaterial({
@@ -523,19 +591,19 @@ BaseFunctionCurves.prototype.update = function () {
 		});
 
 		var params = {
-			p: 3
+			p: 3,
 			curv: 0
 		};
 
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.01).name('Parameter (t)');
 		parameter.onChange(function() {
 			cEditor.updateCurvePoint();
-			params.curv = getCurvature(cEditor.t);
+			params.curv = JSCAGD.NumDer.getCurvature(curve, cEditor.t);
 		});
 
 
 
-		var curvParam = gui.add(params, 'curv').name('Curvature');
+		var curvParam = gui.add(params, 'curv').step(0.0001).name('Curvature').listen();
 
 
 		var showPoint = gui.add(cEditor, 'showPoint').name('Show moving point');

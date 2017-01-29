@@ -112,7 +112,7 @@ JSCAGD.MeanBase.evalAllGeneralCorner2 = function(u, knot, d) {
 	
 	
 	var v = new JSCAGD.Vector2(u, 0);
-	var meanValues = JSCAGD.MeanValue.evalBuhera2(V0, v);
+	var meanValues = JSCAGD.MeanValue.evalBuhera(V0, v);
 	
 
 	//var h = d *u *(1-u);
@@ -142,6 +142,203 @@ JSCAGD.MeanBase.evalAllGeneralCorner2 = function(u, knot, d) {
 	}
 	return basis1;
 };
+
+
+
+JSCAGD.MeanBase.evalAllGeneralCorner3 = function(u, knot, d) {
+	
+	var n = knot.length;
+	var i;
+	var V0 = [];
+	var d0 = 0.1;
+	for (i = 0; i < n; i++) {
+		if (i==0 || i==n-1) {
+			V0.push(new JSCAGD.Vector2(knot[i], 0.1*d))
+		} else {
+			V0.push(new JSCAGD.Vector2(knot[i], 0.1*d));
+		}
+		
+	}
+	var v = new JSCAGD.Vector2(u, 0);
+
+	var s = [];
+	var r = [];
+	var f = [];
+	for (i = 0; i < n; i++) {
+		f[i] = 0;
+	}
+	if (u === 0) {
+		f[0] = 1;
+		return f;
+	}
+	if (u === 1) {
+		f[n-1] = 1;
+		return f;
+	}
+	for (i = 0; i < n; i++) {
+		s[i] = V0[i].clone();
+		s[i].addScaledVector(v, -1);
+		r[i] = s[i].length();
+
+	}
+	
+	
+	
+	//var meanValues = JSCAGD.MeanValue.evalBuhera(V0, v);
+	var total = 0;
+	var basis1 = [];	
+	basis1[0] = (r[1]-r[0])+(r[0]/(u))/(n-1)/2 +(r[0]*r[0]/(u*u))/(n-1)/2;
+	total += basis1[0];
+	basis1[1] = (r[0] + r[2] - 2*r[1])+0.2*((d)/(u))/(n-1);
+	total += basis1[1];
+	for (i = 2; i < n-1; i++) {
+		basis1[i] = (r[i-1] + r[i+1] - 2*r[i]);
+		total += basis1[i];
+	}
+	basis1[n-1] = (r[n-2]-r[n-1])+r[n-1]/((1-u))/(n-1);
+	total += basis1[n-1];
+	for (i = 0; i < n; i++) {
+		basis1[i] /= total;
+	}
+	return basis1;
+};
+
+
+JSCAGD.MeanBase.evalAllGeneralCorner4 = function(u, knot, d) {
+	
+	var n = knot.length;
+	var i;
+	var V0 = [];
+	var d0 = 0.1;
+	for (i = 0; i < n; i++) {
+		if (i==0 || i==n-1) {
+			V0.push(new JSCAGD.Vector2(knot[i], 0.1*d))
+		} else {
+			V0.push(new JSCAGD.Vector2(knot[i], 0.1*d));
+		}
+		
+	}
+	var v = new JSCAGD.Vector2(u, 0);
+
+	var s = [];
+	var r = [];
+	var f = [];
+	for (i = 0; i < n; i++) {
+		f[i] = 0;
+	}
+	if (u === 0) {
+		f[0] = 1;
+		return f;
+	}
+	if (u === 1) {
+		f[n-1] = 1;
+		return f;
+	}
+	for (i = 0; i < n; i++) {
+		s[i] = V0[i].clone();
+		s[i].addScaledVector(v, -1);
+		r[i] = s[i].length();
+
+	}
+	
+	var t = u;
+	
+	//var meanValues = JSCAGD.MeanValue.evalBuhera(V0, v);
+	var total = 0;
+	var basis1 = [];	
+	var h0 = 1/(n-1);
+	basis1[0] = (r[1] / (t*t) + (h0-t) / (t*t)) * h0 * h0;
+	total += basis1[0];
+	basis1[1] = (1/t + (h0-t) / (t*r[1])) * h0 * h0+ r[2]- (h0-t)* (2*h0-t)/r[1];
+
+	total += basis1[1];
+	for (i = 2; i < n-2; i++) {
+		basis1[i] = (r[i-1] + r[i+1] - 2*r[i]);
+		total += basis1[i];
+	}
+	basis1[n-2] =  (1/ (1-t) - ((n-2)*h0-t) / ((1-t)*r[n-2])) * h0 * h0+ r[n-3] - ((n-3)*h0-t)* ((n-2)*h0-t)/r[n-2];
+	total += basis1[n-2];
+	basis1[n-1] = (r[n-2] / ((1-t)*(1-t)) - ((n-2)*h0-t) / ((1-t)*(1-t)))* h0 * h0;
+	total += basis1[n-1];
+	for (i = 0; i < n; i++) {
+		basis1[i] /= total;
+	}
+	return basis1;
+};
+
+
+JSCAGD.MeanBase.evalAllCyclic1 = function(u, n, d) {
+	var k;
+	var diff = 1/n;
+	var i;
+	var r = [];
+	for(k = 0; k < 10; k++)
+	{
+		for (i = 0; i < n; i++) {
+			var ptdist = ((-5+k)*n+i)*diff;
+			r[k*n + i] = Math.sqrt((u-ptdist)*(u-ptdist) + d*d/100);
+		}
+	}
+	
+
+	var total = 0;
+	var basis1 = [];
+	for (i = 0; i < n; i++) {
+		basis1[i] = 0;
+	}
+	for(k = 1; k < 9; k++)
+	{
+		for (i = 0; i < n; i++) {
+			
+			var index = k*n + i;
+			var plus = r[index-1] + r[index+1] - 2*r[index];
+			basis1[i] += plus;
+			total  += plus;
+		}
+	}
+	for (i = 0; i < n; i++) {
+		basis1[i] /= total;
+	}
+	return basis1;
+};
+
+
+JSCAGD.MeanBase.evalAllCyclic2 = function(u, n, d) {
+	var diff = 1/n;
+	var i;
+	d /= 10;
+	var d2 = 10*d;
+
+	var smooth_d = function(x, d) {
+		return Math.sqrt(x*x + d * d);
+	};
+
+	var smooth_dd = function(x, d, max) {
+		var rev = max - x; // 0.5 - x
+		return  smooth_d(max, d) - smooth_d(rev, d);
+	};
+
+	var abs05i = function(x, i) {
+		return 0.5 - Math.abs(0.5 - Math.abs(x - i* diff));
+	};
+
+	var basis1 = [];
+	var total = 0;
+	for (i = 0; i < n; i++) {	
+		var ri = smooth_d(abs05i(u,i), d);
+		var maxri = smooth_d(0.5, d);
+		var plusi = smooth_d(abs05i(u,i)- diff, d) + smooth_d(abs05i(u,i) + diff, d);
+		var maxplus = (smooth_d(0.5- diff, d) + smooth_d(0.5 + diff, d))/2;
+		basis1[i] =  - smooth_dd(ri,d2, maxri) + smooth_dd(plusi/2, d2, maxplus);
+		total  += basis1[i];
+	}
+	
+	for (i = 0; i < n; i++) {
+		basis1[i] /= total;
+	}
+	return basis1;
+};
+
 
 
 JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
@@ -179,7 +376,8 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 
 	function(u) {
 		//var N = JSCAGD.MeanBase.evalAllGeneral(this.n + 1, u, this.topPoints);
-		var N = JSCAGD.MeanBase.evalAllGeneralCorner2(u, this.knot, this.d);
+		var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.knot, this.d);
+		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.n+1, this.d);
 		var C = new JSCAGD.Vector3(0.0, 0.0, 0.0);
 		var i;
 

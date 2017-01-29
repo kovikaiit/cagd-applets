@@ -42,7 +42,7 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 
 	// Control points
 	for (i = 0; i <= this.geometry.n; i++) {
-		spgeometry = new THREE.SphereGeometry(20, 32, 32);
+		spgeometry = new THREE.SphereGeometry(15, 32, 32);
 		sphere = new THREE.Mesh(spgeometry, pointmaterial);
 		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
 		this.controlPoints.push(sphere);
@@ -113,13 +113,14 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	THREE.Object3D.call(this);
 
 	this.curve = curve;
+	this.fenceResolution = 600;
 
 	this.curve.dynamic = true;
 
 	this.tube = new THREE.TubeGeometry(
 		this.curve, //path
-		100, //segments
-		8, //radius
+		300, //segments
+		2, //radius
 		8, //radiusSegments
 		false //closed
 	);
@@ -159,6 +160,43 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 		this.add(this.bArrow);
 	}
 
+	var material = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
+	this.curvatureFence = new THREE.Object3D();
+	this.fenceLines = [];
+	var ti = 0;
+	for (var i = 0; i < this.fenceResolution-1; i++) {
+		var tan = this.curve.getTangent(ti);
+
+		var curvepoint = this.curve.getPoint(ti);
+		var fencepoint = curvepoint.clone();
+		var curvature = Math.max(Math.min(10*JSCAGD.NumDer.getCurvature(this.curve, ti), 1),-1);
+
+		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
+
+		var bgeometry = new THREE.BufferGeometry();
+
+		var positions = new Float32Array( 2 * 3 ); // 3 vertices per point
+		bgeometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+		
+		var line = new THREE.Line( bgeometry,  material );
+		var positions = line.geometry.attributes.position.array;
+		positions[0] = curvepoint.x;
+		positions[1] = curvepoint.y;
+		positions[2] = curvepoint.z;
+
+		positions[3] = fencepoint.x;
+		positions[4] = fencepoint.y;
+		positions[5] = fencepoint.z;
+
+		//var geometry = new THREE.Geometry();
+		//geometry.vertices.push(this.curve.getPoint(ti));
+		//geometry.vertices.push(fencepoint);
+		//var line = new THREE.Line(geometry, material);
+		this.curvatureFence.add(line);
+		this.fenceLines[i] = line;
+		ti += 1/this.fenceResolution;
+	}
+	this.add(this.curvatureFence);
 };
 
 CurveEditor.prototype = Object.create(THREE.Object3D.prototype);
@@ -169,8 +207,8 @@ CurveEditor.prototype.update = function() {
 	this.curve.needsUpdate = true;
 	this.tube = new THREE.TubeGeometry(
 		this.curve, //path
-		100, //segments
-		8, //radius
+		300, //segments
+		2, //radius
 		8, //radiusSegments
 		false //closed
 	);
@@ -179,6 +217,44 @@ CurveEditor.prototype.update = function() {
 	this.tubeMesh.geometry = this.tube;
 	this.tubeMesh.geometry.verticesNeedUpdate = true;
 	this.tubeMesh.verticesNeedUpdate = true;
+
+	//this.remove(this.curvatureFence);
+	//this.curvatureFence = new THREE.Object3D();
+
+	var material = new THREE.LineBasicMaterial({
+				color: 0x0000ff
+	});
+	var ti = 0;
+	for (var i = 0; i < this.fenceResolution-1; i++) {
+		ti += 1/this.fenceResolution;
+		var tan = this.curve.getTangent(ti);
+
+		var curvepoint = this.curve.getPoint(ti);
+		var fencepoint = curvepoint.clone();
+		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+
+		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
+
+		
+		var line = this.fenceLines[i];
+		var positions = line.geometry.attributes.position.array;
+		positions[0] = curvepoint.x;
+		positions[1] = curvepoint.y;
+		positions[2] = curvepoint.z;
+
+		positions[3] = fencepoint.x;
+		positions[4] = fencepoint.y;
+		positions[5] = fencepoint.z;
+		line.geometry.attributes.position.needsUpdate = true; 
+		//var geometry = new THREE.Geometry();
+		//geometry.vertices.push(this.curve.getPoint(ti));
+		//geometry.vertices.push(fencepoint);
+		//var line = new THREE.Line(geometry, material);
+		//this.curvatureFence.add(line);
+		//line.geometry.attributes.position.needsUpdate = true; 
+		//ti += 1/99;
+	}
+	//this.add(this.curvatureFence);
 };
 
 CurveEditor.prototype.updateCurvePoint = function() {
@@ -506,19 +582,19 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 	function initCurve() {
 
 		// Curve parameters
-		var p0 = new THREE.Vector3(-500.0,500.0, 0.0);
-		var p1 = new THREE.Vector3(-500.0, 0.0, 0.0);
-		var p2 = new THREE.Vector3(-200.0, -50.0, 0.0);
+var p0 = new THREE.Vector3(-600.0,0.0, 0.0);
+		var p1 = new THREE.Vector3(-400.0, 300.0, 0.0);
+		var p2 = new THREE.Vector3(-200.0, 0.0, 0.0);
 		var p3 = new THREE.Vector3(0.0, 0.0, 0.0);
-		var p4 = new THREE.Vector3(0.0, 250.0, 0.0);
-		var p5 = new THREE.Vector3(-200.0, 400.0, 0.0);
-		var p6 = new THREE.Vector3(-300.0, 200, 0.0);
+		var p4 = new THREE.Vector3(100.0, 200.0, 0.0);
+		var p5 = new THREE.Vector3(0.0, 350.0, 0.0);
+		var p6 = new THREE.Vector3(-200.0, 350, 0.0);
 		var p7 = new THREE.Vector3(-300.0, 200, 0.0);
 		var p8 = new THREE.Vector3(-300.0, 300, 0.0);
 		var p9 = new THREE.Vector3(-300.0, 400, 0.0);
 		var p10 = new THREE.Vector3(-300.0, 500, 0.0);
-		var P = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10];
-		var n = 10;
+		var P = [p0, p1, p2, p3, p4, p5, p6];
+		var n = 6;
 		curve = new JSCAGD.BsplineCurve(P, n, 3);
 
 
@@ -571,15 +647,17 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 		};
 		var curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
-			curve.setDegree(params.p);
-			cEditor.update();
-			cEditor.updateCurvePoint();
-			bsCurves.resetGeometry(curve);
-			var knotDragger = new KnotDragger(curve, function() {
+			if (curve.p != params.p) {
+				curve.setDegree(params.p);
 				cEditor.update();
-				bsCurves.update();
 				cEditor.updateCurvePoint();
-			});
+				bsCurves.resetGeometry(curve);
+				var knotDragger = new KnotDragger(curve, function() {
+					cEditor.update();
+					bsCurves.update();
+					cEditor.updateCurvePoint();
+				});
+			}
 		});
 
 		var showPoint = gui.add(cEditor, 'showPoint').name('Show moving point');
