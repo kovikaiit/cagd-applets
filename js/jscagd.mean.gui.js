@@ -328,13 +328,25 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 		//u = typeof u !== 'undefined' ? u : 0.5;
 		//console.log(u);
 		//var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
-		var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
+
+		//var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
+
+		var N;
+		if(this.c_geom.curvetype === 'meang1') {
+			N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
+		} else if (this.c_geom.curvetype === 'meang0') {
+			N = JSCAGD.MeanBase.evalAllGeneralCorner3(u, this.c_geom.knot, this.c_geom.d);
+		} else if (this.c_geom.curvetype === 'cyclicInf') {
+			N = JSCAGD.MeanBase.evalAllCyclic1(u, this.c_geom.n+1, this.c_geom.d);
+		} else if (this.c_geom.curvetype === 'cyclicTricky') {
+			N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
+		}	
 		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
 		//var N = JSCAGD.BsplineBase.evalNonWanishDer(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 
 		//var N = JSCAGD.BernsteinBase.evalAll(this.c_geom.n, u);
 		
-			return new JSCAGD.Vector3(0, this.height * N[this.i] - this.height/2, this.width * u - this.width/2);
+		return new JSCAGD.Vector3(0, this.height * N[this.i] - this.height/2, this.width * u - this.width/2);
 	
 	}
 );
@@ -352,10 +364,12 @@ var BaseFunctionCurves = function(geometry, width, height) {
 	this.baseCurves = [];
 
 	//var i = 3;
+	this.objcontainer = new THREE.Object3D();
 	for (var i = 0; i <= geometry.n; i++) {
 		var material = new THREE.LineBasicMaterial({
-			//color: "#"+((1<<24)*Math.random()|0).toString(16)
-			color: "#000000", linewidth: 2 
+			//color: "#"+((1<<24)*Math.random()|0).toString(16) //color: "#000000", 
+			linewidth: 2 ,
+			color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
 		});
 		var baseCurve1 = new BaseCurve(geometry, i, width, height);
 		var curvegeometry = new THREE.Geometry();
@@ -366,10 +380,10 @@ var BaseFunctionCurves = function(geometry, width, height) {
 		this.baseCurves.push(curvegeometry);
 		var curveObject = new THREE.Line(curvegeometry, material);
 		curveObject.dynamic = true;
-		this.add(curveObject);
+		this.objcontainer.add(curveObject);
 		this.update();
 	}
-
+	this.add(this.objcontainer);
 	var curvegeometry = new THREE.Geometry();
 	curvegeometry.dynamic = true;
 	//curvegeometry.vertices.push(return new JSCAGD.Vector3(0, - this.height/2, this.width * u - this.width/2));
@@ -399,6 +413,40 @@ BaseFunctionCurves.prototype.update = function () {
 		//this.baseCurves[i].vertices = this.baseCurves[i].curve.getPoints( 100 );
 		this.baseCurves[i].verticesNeedUpdate = true;
 	}
+};
+
+
+
+BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
+
+	this.geometry = newgeometry;
+
+	this.baseCurves = [];
+	this.remove(this.objcontainer);
+	this.objcontainer = new THREE.Object3D();
+
+	for (var i = 0; i <= this.geometry.n; i++) {
+		var material = new THREE.LineBasicMaterial({
+			linewidth: 2 ,
+			color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
+		});
+		var baseCurve1 = new BaseCurve(this.geometry, i, this.width, this.height);
+		var curvegeometry = new THREE.Geometry();
+		curvegeometry.curve = baseCurve1;
+		curvegeometry.vertices = baseCurve1.getPoints( 99 );
+		curvegeometry.dynamic = true;
+
+		this.baseCurves.push(curvegeometry);
+		var curveObject = new THREE.Line(curvegeometry, material);
+		curveObject.dynamic = true;
+		this.objcontainer.add(curveObject);
+	}
+	this.add(this.objcontainer);
+	this.update();
+
+	var curvegeometry = new THREE.Geometry();
+	curvegeometry.dynamic = true;
+	this.update();
 };
 
 
@@ -611,6 +659,14 @@ BaseFunctionCurves.prototype.update = function () {
 	function initGui() {
 		gui = new dat.GUI({ width: 512, resizable : false });
 
+		
+		var typeChange = gui.add(curve, 'curvetype', [ 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky' ] ).name('Curve type');
+		typeChange.onChange(function(value) {
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.update();
+		});
+
 		var parameterD = gui.add( cEditor, 'd' ).min(0).max(10).step(0.01).name('d');
 		parameterD.onChange(function(value) {
 			curve.setD(cEditor.d);
@@ -649,14 +705,15 @@ BaseFunctionCurves.prototype.update = function () {
 			curve.insertKnot(cEditor.t); 
 			cEditor.update(); 
 			controlNet.reset(); 
-			var knotDragger = new KnotDragger(curve, function() {
+			bsCurves.resetGeometry(curve);
+			var knotDragger = new KnotDraggerMean(curve, function() {
 				cEditor.update();
 				bsCurves.update();
 				cEditor.updateCurvePoint();
 			});
 		}};
 
-		gui.add(insertKnot,'add');
+		gui.add(insertKnot,'add').name('Insert knot');
 
 		gui.open();
 

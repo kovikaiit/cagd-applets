@@ -145,6 +145,9 @@ var KnotDraggerMean = function(geometry, onChange) {
 
 	var container = document.getElementById('knotSlider');
 
+	while (container.firstChild) {
+	    container.removeChild(container.firstChild);
+	}
 
 	for (var i = 0; i < n + 1; i++) {
 		var dragger = document.createElement("div");

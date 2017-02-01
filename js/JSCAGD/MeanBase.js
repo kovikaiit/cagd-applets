@@ -244,6 +244,7 @@ JSCAGD.MeanBase.evalAllGeneralCorner4 = function(u, knot, d) {
 	var r = [];
 	var f = [];
 	var b = [];
+	var dx;
 	for (i = 0; i < n; i++) {
 		f[i] = 0;
 	}
@@ -259,8 +260,9 @@ JSCAGD.MeanBase.evalAllGeneralCorner4 = function(u, knot, d) {
 		s[i] = V0[i].clone();
 		s[i].addScaledVector(v, -1);
 		r[i] = s[i].length();
-		if(i !== n-1){
-			b[i] = 1/(knot[i+1]-knot[i]);
+		if(i !== n-1 ){
+			dx = (knot[i+1]-knot[i])
+			b[i] = 1/dx;
 		}
 	}
 	
@@ -302,7 +304,6 @@ JSCAGD.MeanBase.evalAllCyclic1 = function(u, n, d) {
 			r[k*n + i] = Math.sqrt((u-ptdist)*(u-ptdist) + d*d/100);
 		}
 	}
-	
 
 	var total = 0;
 	var basis1 = [];
@@ -366,38 +367,33 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 	function(P, n, d) {
 		this.n = typeof n !== 'undefined' ? n : P.length -1;
 		this.d = typeof d !== 'undefined' ? d : 1 / (n + 1);
-		this.topPoints = [];
 
 		var i;
-		//this.topPoints.push(new JSCAGD.Vector3(0, -this.d, 0));
-		//this.topPoints.push(new JSCAGD.Vector3(0, -0.00001, 0));
-		//for (i = 0; i < this.n + 1; i++) {
-		//	this.topPoints.push(new JSCAGD.Vector3(i / this.n, this.d, 0));
-		//}
-		//this.topPoints.push(new JSCAGD.Vector3(1, -this.d, 0));
-		//this.topPoints.push(new JSCAGD.Vector3(1, 0, 0));
-		//this.topPoints[1].y = 0.00001;
-		//this.topPoints[n].y = 0.001;
+
 		this.P = P;
 		this.controlNetType = 'curve';
-
-		//this.V = [];
-		//for (i = 0; i < this.n + 1; i++) {
-		//	this.V.push(new JSCAGD.Vector2(i / this.n, this.d));
-		//}
-		//for (i = 0; i < this.n + 1; i++) {
-		//	this.V.push(new JSCAGD.Vector2((n - i) / this.n, -this.d));
-		//}
 
 		this.knot = [];
 		for (i = 0; i < this.n + 1; i++) {
 			this.knot.push(i / this.n);
 		}
+
+		this.curvetype = 'meang1';
 	},
 
 	function(u) {
 		//var N = JSCAGD.MeanBase.evalAllGeneral(this.n + 1, u, this.topPoints);
-		var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.knot, this.d);
+		var N;
+		if(this.curvetype === 'meang1') {
+			N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.knot, this.d);
+		} else if (this.curvetype === 'meang0') {
+			N = JSCAGD.MeanBase.evalAllGeneralCorner3(u, this.knot, this.d);
+		} else if (this.curvetype === 'cyclicInf') {
+			N = JSCAGD.MeanBase.evalAllCyclic1(u, this.n+1, this.d);
+		} else if (this.curvetype === 'cyclicTricky') {
+			N = JSCAGD.MeanBase.evalAllCyclic2(u, this.n+1, this.d);
+		}	
+		
 		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.n+1, this.d);
 		var C = new JSCAGD.Vector3(0.0, 0.0, 0.0);
 		var i;
@@ -411,21 +407,6 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 
 JSCAGD.MeanCurve.prototype.setD = function(d) {
 	this.d = d;
-	//this.topPoints = [];
-	//var i;
-	//this.topPoints[0].y = -d;
-	//for (i = 0; i < this.n + 1; i++) {
-	//	this.topPoints[i+1].y = d;
-	//}
-	//this.topPoints[this.n + 2].y = -d;
-
-	//this.V = [];
-	//for (i = 0; i < this.n + 1; i++) {
-	//	this.V.push(new JSCAGD.Vector2(i / this.n, this.d));
-	//}
-	//for (i = 0; i < this.n + 1; i++) {
-	//	this.V.push(new JSCAGD.Vector2((this.n - i) / this.n, -this.d));
-	//}
 };
 
 JSCAGD.MeanCurve.prototype.insertKnot = function(t) {
