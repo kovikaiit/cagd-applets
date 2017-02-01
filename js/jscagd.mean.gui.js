@@ -26,6 +26,7 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 	this.mouse = new THREE.Vector2();
 	this.dashedmaterial = dashedmaterial;
 	this.pointmaterial = pointmaterial;
+	this.onChange = onChange;
 
 
 	// Control point moving
@@ -37,7 +38,7 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 	}
 	this.control.addEventListener('change', function() {
 		that.update();
-		onChange(); //undefined??
+		that.onChange(); //undefined??
 	});
 
 
@@ -57,14 +58,16 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 		this.add(this.controlPolygonPath);
 	}
 
+	this.cptContainer = new THREE.Object3D();
 	// Control points
 	for (i = 0; i <= this.geometry.n; i++) {
 		spgeometry = new THREE.SphereGeometry(15, 32, 32);
 		sphere = new THREE.Mesh(spgeometry, pointmaterial);
 		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
 		this.controlPoints.push(sphere);
-		this.add(sphere);
+		this.cptContainer.add(sphere);
 	}
+	this.add(this.cptContainer);
 };
 
 ControlNet.prototype = Object.create(THREE.Object3D.prototype);
@@ -125,13 +128,29 @@ ControlNet.prototype.reset = function() {
 	this.controlPoints = [];
 
 	// Control points
+	this.cptContainer = new THREE.Object3D();
 	for (i = 0; i <= this.geometry.n; i++) {
-		var spgeometry = new THREE.SphereGeometry(20, 32, 32);
+		var spgeometry = new THREE.SphereGeometry(15, 32, 32);
 		var sphere = new THREE.Mesh(spgeometry, this.pointmaterial);
 		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
 		this.controlPoints.push(sphere);
-		this.add(sphere);
+		this.cptContainer.add(sphere);
 	}
+	this.add(this.cptContainer);
+		// Control point moving
+	var	that = this;
+	if(is3D) {
+		this.control = new THREE.TransformControls(camera, renderer.domElement);
+		this.control.size = 0.5;
+	} else {
+		this.control.dispose();
+		this.control = new THREE.DragControls( this.controlPoints, this.camera, this.renderer.domElement );
+	}
+	this.control.addEventListener('change', function() {
+		that.update();
+		that.onChange(); 
+	});
+
 };
 
 
@@ -170,9 +189,10 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	this.d = 0.2;
 	
 	this.showPoint = false;
+	this.showCurv = true;
 
 	var pos = this.curve.getPoint(this.t);
-	var geometry = new THREE.SphereGeometry(25, 32, 32);
+	var geometry = new THREE.SphereGeometry(10, 32, 32);
 	this.curvePoint = new THREE.Mesh(geometry, movingpointmaterial);
 	this.curvePoint.position.set(pos.x, pos.y, pos.z);
 
@@ -191,7 +211,7 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 
 		var curvepoint = this.curve.getPoint(ti);
 		var fencepoint = curvepoint.clone();
-		var curvature = Math.max(Math.min(10*JSCAGD.NumDer.getCurvature(this.curve, ti), 1),-1);
+		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
 
 		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
 
@@ -283,6 +303,15 @@ CurveEditor.prototype.setShow = function() {
 		this.add(this.curvePoint);
 	} else {
 		this.remove(this.curvePoint);
+	}
+};
+
+CurveEditor.prototype.setShowCurf = function() {
+	
+	if (this.showCurv) {
+		this.add(this.curvatureFence);
+	} else {
+		this.remove(this.curvatureFence);
 	}
 };
 
@@ -611,7 +640,21 @@ BaseFunctionCurves.prototype.update = function () {
 			cEditor.setShow();
 		});
 
-		var insertKnot = { add:function(){ curve.insertKnot(cEditor.t); cEditor.update(); controlNet.reset(); }};
+		var showCurf = gui.add(cEditor, 'showCurv').name('Show curvature fence');
+		showCurf.onChange(function() {
+			cEditor.setShowCurf();
+		});
+
+		var insertKnot = { add:function(){ 
+			curve.insertKnot(cEditor.t); 
+			cEditor.update(); 
+			controlNet.reset(); 
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
+		}};
 
 		gui.add(insertKnot,'add');
 

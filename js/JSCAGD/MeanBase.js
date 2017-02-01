@@ -164,6 +164,7 @@ JSCAGD.MeanBase.evalAllGeneralCorner3 = function(u, knot, d) {
 	var s = [];
 	var r = [];
 	var f = [];
+	var b = [];
 	for (i = 0; i < n; i++) {
 		f[i] = 0;
 	}
@@ -179,23 +180,42 @@ JSCAGD.MeanBase.evalAllGeneralCorner3 = function(u, knot, d) {
 		s[i] = V0[i].clone();
 		s[i].addScaledVector(v, -1);
 		r[i] = s[i].length();
-
+		if(i !== n-1){
+			b[i] = 1/(knot[i+1]-knot[i]);
+		}
+		
 	}
 	
-	
+	//var meanValues = JSCAGD.MeanValue.evalBuhera(V0, v);
+	//var total = 0;
+	//var basis1 = [];	
+	//basis1[0] = (r[1]-r[0])+(r[0]/(u))/(n-1);
+	//total += basis1[0];
+	//basis1[1] = (r[0] + r[2] - 2*r[1]);
+	// total += basis1[1];
+	// for (i = 2; i < n-1; i++) {
+	// 	basis1[i] = (r[i-1] + r[i+1] - 2*r[i]);
+	// 	total += basis1[i];
+	// }
+	// basis1[n-1] = (r[n-2]-r[n-1])+r[n-1]/((1-u))/(n-1);
+	// total += basis1[n-1];
+	// for (i = 0; i < n; i++) {
+	// 	basis1[i] /= total;
+	// }
+	// return basis1;
 	
 	//var meanValues = JSCAGD.MeanValue.evalBuhera(V0, v);
 	var total = 0;
 	var basis1 = [];	
-	basis1[0] = (r[1]-r[0])+(r[0]/(u))/(n-1)/2 +(r[0]*r[0]/(u*u))/(n-1)/2;
+	basis1[0] = (r[1]*b[0] - r[0]*b[0])+r[0]/u;
 	total += basis1[0];
-	basis1[1] = (r[0] + r[2] - 2*r[1])+0.2*((d)/(u))/(n-1);
+	basis1[1] = (r[0]*b[0] + r[2]*b[1] - (b[0]+b[1]) * r[1]);
 	total += basis1[1];
 	for (i = 2; i < n-1; i++) {
-		basis1[i] = (r[i-1] + r[i+1] - 2*r[i]);
+		basis1[i] = (r[i-1] * b[i-1] + r[i+1] * b[i] - (b[i-1] + b[i]) * r[i]);
 		total += basis1[i];
 	}
-	basis1[n-1] = (r[n-2]-r[n-1])+r[n-1]/((1-u))/(n-1);
+	basis1[n-1] = (r[n-2]*b[n-2]-r[n-1]*b[n-2])+r[n-1]/(1-u);
 	total += basis1[n-1];
 	for (i = 0; i < n; i++) {
 		basis1[i] /= total;
@@ -223,6 +243,7 @@ JSCAGD.MeanBase.evalAllGeneralCorner4 = function(u, knot, d) {
 	var s = [];
 	var r = [];
 	var f = [];
+	var b = [];
 	for (i = 0; i < n; i++) {
 		f[i] = 0;
 	}
@@ -238,27 +259,29 @@ JSCAGD.MeanBase.evalAllGeneralCorner4 = function(u, knot, d) {
 		s[i] = V0[i].clone();
 		s[i].addScaledVector(v, -1);
 		r[i] = s[i].length();
-
+		if(i !== n-1){
+			b[i] = 1/(knot[i+1]-knot[i]);
+		}
 	}
 	
 	var t = u;
-	
+	d /= 10;
 	//var meanValues = JSCAGD.MeanValue.evalBuhera(V0, v);
 	var total = 0;
 	var basis1 = [];	
 	var h0 = 1/(n-1);
-	basis1[0] = (r[1] / (t*t) + (h0-t) / (t*t)) * h0 * h0;
+	basis1[0] = (r[1] + (knot[1]-t) )/ b[0]  / (t*t);
 	total += basis1[0];
-	basis1[1] = (1/t + (h0-t) / (t*r[1])) * h0 * h0+ r[2]- (h0-t)* (2*h0-t)/r[1];
+	basis1[1] = (1/t + (knot[1]-t) / (t*r[1])) / b[0] + r[2] *b[1]- r[1] *b[1] - (knot[1]-t)/r[1];
 
 	total += basis1[1];
 	for (i = 2; i < n-2; i++) {
-		basis1[i] = (r[i-1] + r[i+1] - 2*r[i]);
+		basis1[i] = (r[i-1] * b[i-1] + r[i+1] * b[i] - (b[i-1] + b[i]) * r[i]);
 		total += basis1[i];
 	}
-	basis1[n-2] =  (1/ (1-t) - ((n-2)*h0-t) / ((1-t)*r[n-2])) * h0 * h0+ r[n-3] - ((n-3)*h0-t)* ((n-2)*h0-t)/r[n-2];
+	basis1[n-2] =  (1/ (1-t) - (knot[n-2]-t) / ((1-t)*r[n-2])) /b[n-2] + r[n-3]* b[n-3] -  r[n-2] * b[n-3] + (knot[n-2]-t)/r[n-2]; //    (((n-3)*h0-t)* ((n-2)*h0-t)+d*d)/r[n-2];
 	total += basis1[n-2];
-	basis1[n-1] = (r[n-2] / ((1-t)*(1-t)) - ((n-2)*h0-t) / ((1-t)*(1-t)))* h0 * h0;
+	basis1[n-1] = (r[n-2] / ((1-t)*(1-t)) - (knot[n-2]-t) / ((1-t)*(1-t)))/b[n-2] ;
 	total += basis1[n-1];
 	for (i = 0; i < n; i++) {
 		basis1[i] /= total;
@@ -312,12 +335,10 @@ JSCAGD.MeanBase.evalAllCyclic2 = function(u, n, d) {
 	var smooth_d = function(x, d) {
 		return Math.sqrt(x*x + d * d);
 	};
-
 	var smooth_dd = function(x, d, max) {
 		var rev = max - x; // 0.5 - x
 		return  smooth_d(max, d) - smooth_d(rev, d);
 	};
-
 	var abs05i = function(x, i) {
 		return 0.5 - Math.abs(0.5 - Math.abs(x - i* diff));
 	};
@@ -343,30 +364,30 @@ JSCAGD.MeanBase.evalAllCyclic2 = function(u, n, d) {
 
 JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 	function(P, n, d) {
-		this.n = typeof n !== 'undefined' ? n : P.length - 1;
+		this.n = typeof n !== 'undefined' ? n : P.length -1;
 		this.d = typeof d !== 'undefined' ? d : 1 / (n + 1);
 		this.topPoints = [];
 
 		var i;
 		//this.topPoints.push(new JSCAGD.Vector3(0, -this.d, 0));
-		this.topPoints.push(new JSCAGD.Vector3(0, -0.00001, 0));
-		for (i = 0; i < this.n + 1; i++) {
-			this.topPoints.push(new JSCAGD.Vector3(i / this.n, this.d, 0));
-		}
-		this.topPoints.push(new JSCAGD.Vector3(1, -this.d, 0));
+		//this.topPoints.push(new JSCAGD.Vector3(0, -0.00001, 0));
+		//for (i = 0; i < this.n + 1; i++) {
+		//	this.topPoints.push(new JSCAGD.Vector3(i / this.n, this.d, 0));
+		//}
+		//this.topPoints.push(new JSCAGD.Vector3(1, -this.d, 0));
 		//this.topPoints.push(new JSCAGD.Vector3(1, 0, 0));
-		this.topPoints[1].y = 0.00001;
+		//this.topPoints[1].y = 0.00001;
 		//this.topPoints[n].y = 0.001;
 		this.P = P;
 		this.controlNetType = 'curve';
 
-		this.V = [];
-		for (i = 0; i < this.n + 1; i++) {
-			this.V.push(new JSCAGD.Vector2(i / this.n, this.d));
-		}
-		for (i = 0; i < this.n + 1; i++) {
-			this.V.push(new JSCAGD.Vector2((n - i) / this.n, -this.d));
-		}
+		//this.V = [];
+		//for (i = 0; i < this.n + 1; i++) {
+		//	this.V.push(new JSCAGD.Vector2(i / this.n, this.d));
+		//}
+		//for (i = 0; i < this.n + 1; i++) {
+		//	this.V.push(new JSCAGD.Vector2((n - i) / this.n, -this.d));
+		//}
 
 		this.knot = [];
 		for (i = 0; i < this.n + 1; i++) {
@@ -391,43 +412,44 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 JSCAGD.MeanCurve.prototype.setD = function(d) {
 	this.d = d;
 	//this.topPoints = [];
-	var i;
-	this.topPoints[0].y = -d;
-	for (i = 0; i < this.n + 1; i++) {
-		this.topPoints[i+1].y = d;
-	}
-	this.topPoints[this.n + 2].y = -d;
+	//var i;
+	//this.topPoints[0].y = -d;
+	//for (i = 0; i < this.n + 1; i++) {
+	//	this.topPoints[i+1].y = d;
+	//}
+	//this.topPoints[this.n + 2].y = -d;
 
-	this.V = [];
-	for (i = 0; i < this.n + 1; i++) {
-		this.V.push(new JSCAGD.Vector2(i / this.n, this.d));
-	}
-	for (i = 0; i < this.n + 1; i++) {
-		this.V.push(new JSCAGD.Vector2((this.n - i) / this.n, -this.d));
-	}
+	//this.V = [];
+	//for (i = 0; i < this.n + 1; i++) {
+	//	this.V.push(new JSCAGD.Vector2(i / this.n, this.d));
+	//}
+	//for (i = 0; i < this.n + 1; i++) {
+	//	this.V.push(new JSCAGD.Vector2((this.n - i) / this.n, -this.d));
+	//}
 };
 
 JSCAGD.MeanCurve.prototype.insertKnot = function(t) {
-	this.n += 1;
+	
 	var i = this.findSpan(t);
-	var before = this.topPoints[i].x;
-	var next = this.topPoints[i + 1].x;
+	var before = this.knot[i];
+	var next = this.knot[i + 1];
 	var dist = next - before;
 	var lm = (next - t) / dist;
-	var newPoint = this.P[i - 1].clone();
+	var newPoint = this.P[i].clone();
 	newPoint.multiplyScalar(lm);
-	newPoint.addScaledVector(this.P[i], 1 - lm);
-	this.topPoints.splice(i + 1, 0, new JSCAGD.Vector3(t, this.d, 0));
-	this.P.splice(i, 0, newPoint);
+	newPoint.addScaledVector(this.P[i+1], 1 - lm);
+	this.knot.splice(i + 1, 0, t);
+	this.P.splice(i+1, 0, newPoint);
+	this.n += 1;
 };
 
 JSCAGD.MeanCurve.prototype.findSpan = function(t) {
 	if (t === 0) {
 		return 1;
 	}
-	for (var i = 1; i < this.topPoints.length; i++) {
-		if (this.topPoints[i].x > t) {
-			return i - 1;
+	for (var i = 1; i < this.knot.length; i++) {
+		if (this.knot[i] > t) {
+			return i-1;
 		}
 	}
 	if (t === 1) {
