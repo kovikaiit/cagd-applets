@@ -14,7 +14,10 @@ JSCAGD.NumDer.getTangent = function( getPoint ) {
 
 	// Simple one step method
 	return function( t ) {
-			var delta = 0.0001;
+		var delta = 0.0001;
+		if (t===1) { t = t-delta; }
+		if (t===0) { t = t+delta; }
+			
 			var t1 = t - delta;
 			var t2 = t + delta;
 
@@ -39,7 +42,10 @@ JSCAGD.NumDer.getCurvature = function( curve, t ) {
 	// “Differential and Numerically Invariant Signature Curves Applied to Object Recognition.” 
 	// International Journal of Computer Vision 26.2 (1998): 107-135
 	//return function( t ) {
-			var delta = 0.0001;
+		var delta = 0.0001;
+			if (t===1) { t = t-delta; }
+			if (t===0) { t = t+delta; }
+			
 			var t1 = t - delta;
 			var t2 = t + delta;
 

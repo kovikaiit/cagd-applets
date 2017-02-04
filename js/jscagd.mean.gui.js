@@ -30,17 +30,23 @@ var ControlNet = function(geometry, camera, renderer, onChange, pointmaterial, d
 
 
 	// Control point moving
-	if(is3D) {
-		this.control = new THREE.TransformControls(camera, renderer.domElement);
-		this.control.size = 0.5;
-	} else {
-		this.control = new THREE.DragControls( this.controlPoints, camera, renderer.domElement );
-	}
-	this.control.addEventListener('change', function() {
+	this.control3D = new THREE.TransformControls(this.camera, this.renderer.domElement);
+	this.control2D = new THREE.DragControls( this.controlPoints, this.camera, this.renderer.domElement );
+	this.control3D.size = 0.5;
+	this.control2D.addEventListener('change', function() {
+		that.update();
+		that.onChange(); //undefined??
+	});
+	this.control3D.addEventListener('change', function() {
 		that.update();
 		that.onChange(); //undefined??
 	});
 
+	if(is3D) {
+		this.control = this.control3D;
+	} else {	
+		this.control = this.control2D;
+	}
 
 	// Raycasting for selection
 	this.raycaster = new THREE.Raycaster();
@@ -111,7 +117,8 @@ ControlNet.prototype.onMouseDown = function(event) {
 	}
 };
 
-ControlNet.prototype.reset = function() {
+ControlNet.prototype.reset = function(newcamera) {
+	this.camera = newcamera;
 	for( var i = this.children.length - 1; i >= 0; i--) { var obj = this.children[i];
      this.remove(obj); }
 	// Control polygon for curves
@@ -139,12 +146,16 @@ ControlNet.prototype.reset = function() {
 	this.add(this.cptContainer);
 		// Control point moving
 	var	that = this;
+	
 	if(is3D) {
-		this.control = new THREE.TransformControls(camera, renderer.domElement);
-		this.control.size = 0.5;
-	} else {
+		this.control3D = new THREE.TransformControls(this.camera, this.renderer.domElement);
+		this.control3D.size = 0.5;
 		this.control.dispose();
-		this.control = new THREE.DragControls( this.controlPoints, this.camera, this.renderer.domElement );
+		this.control = this.control3D;
+	} else {
+		this.control2D = new THREE.DragControls( this.controlPoints, this.camera, this.renderer.domElement );
+		this.control.dispose();
+		this.control = this.control2D;
 	}
 	this.control.addEventListener('change', function() {
 		that.update();
@@ -153,6 +164,25 @@ ControlNet.prototype.reset = function() {
 
 };
 
+
+function getCircleOrig(curve, t) {
+	//if (t===1) { t = 0.99; }
+	//if (t===0) { t = 0.005; }
+	var tan = curve.getTangent(t);
+	var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
+	var radius = -1/JSCAGD.NumDer.getCurvature(curve, t);
+	if(is3D && (curve.curvetype === 'Bézier' || curve.curvetype === 'B-spline') ) {
+			//normal = new JSCAGD.Vector3(0, 0, 0);
+			normal = curve.getNormalBS(t);
+			radius = Math.abs(radius);
+	}
+	var curvepoint = curve.getPoint(t);
+	var fencepoint = curvepoint.clone();
+	
+	fencepoint.add(new THREE.Vector3(radius*normal.x, radius*normal.y, radius*normal.z));
+
+	return fencepoint;
+}
 
 
 // Curve drawing and edit/update handler
@@ -189,31 +219,65 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	this.d = 0.2;
 	
 	this.showPoint = false;
-	this.showCurv = true;
+	this.showCurv = false;
+	this.showFrame = false;
+	this.showCirc = false;
+	
+
 
 	var pos = this.curve.getPoint(this.t);
 	var geometry = new THREE.SphereGeometry(10, 32, 32);
 	this.curvePoint = new THREE.Mesh(geometry, movingpointmaterial);
 	this.curvePoint.position.set(pos.x, pos.y, pos.z);
+    var curvature = JSCAGD.NumDer.getCurvature(this.curve, this.t);
+	this.osculatingCir =  new THREE.TorusGeometry( 1/curvature, 1, 16, 100 );
+	//this.osculatingCir.position.set(pos.x, pos.y, pos.z);
+	this.torus = new THREE.Mesh( this.osculatingCir, movingpointmaterial );
+	var orig = getCircleOrig(this.curve, this.t);
+	this.torus.position.set(orig.x, orig.y, orig.z);
+////		this.add(this.curvePoint);
+	//}
+	if (this.showCirc) {
+		this.add(this.torus);
+	}
 
+	//var 
 	if (this.showPoint) {
 		this.add(this.curvePoint);
 	}
 
+	var frenetFrame = this.curve.getFrenetFrame(this.t);
+
+	this.tArrow = new THREE.ArrowHelper(frenetFrame.tangent, pos, 200, 0x000000);
+	this.nArrow = new THREE.ArrowHelper(frenetFrame.normal, pos, 200, 0x000000);
+	this.bArrow = new THREE.ArrowHelper(frenetFrame.binormal, pos, 200, 0x000000);
+
+	if (this.showFrame) {
+		this.add(this.tArrow);
+		this.add(this.nArrow);
+		this.add(this.bArrow);
+	}
 
 	this.fenceResolution = 600;
 	var material = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
 	this.curvatureFence = new THREE.Object3D();
 	this.fenceLines = [];
 	var ti = 0;
+	var curvature;
 	for (var i = 0; i < this.fenceResolution-1; i++) {
 		var tan = this.curve.getTangent(ti);
+		var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
+		curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+		if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
+			//normal = new JSCAGD.Vector3(0, 0, 0);
+			normal = this.curve.getNormalBS(ti);
+			curvature = -Math.abs(curvature);
+		}
 
 		var curvepoint = this.curve.getPoint(ti);
 		var fencepoint = curvepoint.clone();
-		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
-
-		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
+		
+		fencepoint.add(new THREE.Vector3(curvature*100*normal.x, curvature*100*normal.y, curvature*100*normal.z));
 
 		var bgeometry = new THREE.BufferGeometry();
 
@@ -238,7 +302,9 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 		this.fenceLines[i] = line;
 		ti += 1/this.fenceResolution;
 	}
-	this.add(this.curvatureFence);
+	if (this.showCurv) {
+		this.add(this.curvatureFence);
+	}
 };
 
 CurveEditor.prototype = Object.create(THREE.Object3D.prototype);
@@ -265,12 +331,19 @@ CurveEditor.prototype.update = function() {
 	for (var i = 0; i < this.fenceResolution-1; i++) {
 		ti += 1/this.fenceResolution;
 		var tan = this.curve.getTangent(ti);
+		var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
+		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+		if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
+			//normal = new JSCAGD.Vector3(0, 0, 0);
+			normal = this.curve.getNormalBS(ti);
+			curvature = -Math.abs(curvature);
+		}
 
 		var curvepoint = this.curve.getPoint(ti);
 		var fencepoint = curvepoint.clone();
-		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+		
 
-		fencepoint.add(new THREE.Vector3(curvature*100*tan.y, -curvature*100*tan.x, 0));
+		fencepoint.add(new THREE.Vector3(curvature*100*normal.x, curvature*100*normal.y, curvature*100*normal.z));
 
 		
 		var line = this.fenceLines[i];
@@ -294,6 +367,40 @@ CurveEditor.prototype.updateCurvePoint = function() {
 	if (this.showPoint) {
 		this.curvePoint.position.set(pos.x, pos.y, pos.z);
 	}
+	if (this.showFrame) {
+		var frenetFrame = this.curve.getFrenetFrame(this.t);
+
+		this.tArrow.position.copy(pos);
+		this.tArrow.setDirection(frenetFrame.tangent);
+
+		this.nArrow.position.copy(pos);
+		this.nArrow.setDirection(frenetFrame.normal);
+
+		this.bArrow.position.copy(pos);
+		this.bArrow.setDirection(frenetFrame.binormal);
+	}
+
+	//}
+	if (this.showCirc) {
+		var curvature = JSCAGD.NumDer.getCurvature(this.curve, this.t);
+		this.osculatingCir =  new THREE.TorusGeometry( 1/curvature, 1, 16, 100 );
+	//this.osculatingCir.position.set(pos.x, pos.y, pos.z);
+	//this.torus = new THREE.Mesh( this.osculatingCir, movingpointmaterial );
+	this.torus.geometry.dispose();
+	this.torus.geometry = this.osculatingCir;
+	var orig = getCircleOrig(this.curve, this.t);
+	this.torus.position.set(orig.x, orig.y, orig.z);
+
+	if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
+		var binormal = this.curve.getBinormalBS(this.t);
+		orig.add(binormal);
+		this.torus.lookAt(orig);
+	}
+	
+////		this.add(this.curvePoint);
+		//this.add(this.torus);
+	}
+
 };
 
 CurveEditor.prototype.setShow = function() {
@@ -303,6 +410,45 @@ CurveEditor.prototype.setShow = function() {
 		this.add(this.curvePoint);
 	} else {
 		this.remove(this.curvePoint);
+	}
+	if (this.showFrame) {
+		var frenetFrame = this.curve.getFrenetFrame(this.t);
+
+		this.tArrow.position.copy(pos);
+		this.tArrow.setDirection(frenetFrame.tangent);
+
+		this.nArrow.position.copy(pos);
+		this.nArrow.setDirection(frenetFrame.normal);
+
+		this.bArrow.position.copy(pos);
+		this.bArrow.setDirection(frenetFrame.binormal);
+
+		this.add(this.tArrow);
+		this.add(this.nArrow);
+		this.add(this.bArrow);
+	} else {
+		this.remove(this.tArrow);
+		this.remove(this.nArrow);
+		this.remove(this.bArrow);
+	}
+	if (this.showCirc) {
+		var curvature = JSCAGD.NumDer.getCurvature(this.curve, this.t);
+		this.osculatingCir =  new THREE.TorusGeometry( 1/curvature, 1, 16, 100 );
+		//this.osculatingCir.position.set(pos.x, pos.y, pos.z);
+		//this.torus = new THREE.Mesh( this.osculatingCir, movingpointmaterial );
+		this.torus.geometry.dispose();
+		this.torus.geometry = this.osculatingCir;
+		var orig = getCircleOrig(this.curve, this.t);
+		this.torus.position.set(orig.x, orig.y, orig.z);
+
+		if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
+			var binormal = this.curve.getBinormalBS(this.t);
+			orig.add(binormal);
+			this.torus.lookAt(orig);
+		}
+		this.add(this.torus);
+	} else {
+		this.remove(this.torus);
 	}
 };
 
@@ -332,7 +478,9 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 		//var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
 
 		var N;
-		if(this.c_geom.curvetype === 'meang1') {
+		if(this.c_geom.curvetype === 'meang1test') {
+			N = JSCAGD.MeanBase.evalAllGeneralCorner5(u, this.c_geom.knot, this.c_geom.d);
+		} else if(this.c_geom.curvetype === 'meang1' || this.c_geom.curvetype === 'P-curve') {
 			N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
 		} else if (this.c_geom.curvetype === 'meang0') {
 			N = JSCAGD.MeanBase.evalAllGeneralCorner3(u, this.c_geom.knot, this.c_geom.d);
@@ -340,13 +488,24 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 			N = JSCAGD.MeanBase.evalAllCyclic1(u, this.c_geom.n+1, this.c_geom.d);
 		} else if (this.c_geom.curvetype === 'cyclicTricky') {
 			N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
+		}	else if (this.c_geom.curvetype === 'B-spline' || this.c_geom.curvetype === 'Bézier') {
+			var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
+			N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 		}	
 		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
 		//var N = JSCAGD.BsplineBase.evalNonWanishDer(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 
 		//var N = JSCAGD.BernsteinBase.evalAll(this.c_geom.n, u);
+		if (this.c_geom.curvetype === 'B-spline' || this.c_geom.curvetype === 'Bézier') {
+			if (span - this.c_geom.p  <=  this.i && this.i <= span) {
+				return new JSCAGD.Vector3(0, this.height * N[this.i - span + this.c_geom.p] - this.height/2, this.width * u - this.width/2);
+			} else {
+				return new JSCAGD.Vector3(0, - this.height/2, this.width * u - this.width/2);
+			}
+		} else {
+			return new JSCAGD.Vector3(0, this.height * N[this.i] - this.height/2, this.width * u - this.width/2);
+		}
 		
-		return new JSCAGD.Vector3(0, this.height * N[this.i] - this.height/2, this.width * u - this.width/2);
 	
 	}
 );
@@ -451,8 +610,13 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 
 
+function hideGUIElem(datguielement) {
+	datguielement.domElement.parentNode.parentNode.style.display = 'none';
+};
 
-
+function showGUIElem(datguielement) {
+	datguielement.domElement.parentNode.parentNode.style.display = 'block';
+};
 
 // Main program
 
@@ -466,9 +630,11 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 	var orbit;
 	var bsCurves;
 	//var getCurvature;
+	var knotclosed = false;
+	var camera2D, camera3D, directionalLight, grid3D;
 
 	var knotScene, knotCamera, knotContainer, knotRenderer;
-
+	var parameterD, insertKnot, curveDegree, elevateDegree;
 	init();
 
 	render();
@@ -478,11 +644,11 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 		// Scene and camera
 		scene = new THREE.Scene();
-		var camera3D = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 10000);
+		camera3D = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 10000);
 		camera3D.position.set(2000, 800, 1300);
-		camera3D.lookAt(new THREE.Vector3());
+		camera3D.lookAt(new THREE.Vector3(0,0,1));
 
-		var camera2D = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
+		camera2D = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
 		camera2D.position.x = 0;
 		camera2D.position.y = 200;
 		camera2D.position.z = 0;
@@ -495,21 +661,24 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 
 		// Grid
+		grid3D = new THREE.GridHelper(500, 100);
+		grid3D.rotation.x = 1.57;
+		//grid3D.lookAt(new THREE.Vector3(10,10,10));
 		if (is3D) {
-			scene.add(new THREE.GridHelper(500, 100));
-			scene.fog = new THREE.Fog(0xe0e0e0, 150, 10000);
+			scene.add(grid3D);
 		}
-
+		scene.fog = new THREE.Fog(0xe0e0e0, 150, 10000);
 		// Lights
 		var ambientLight = new THREE.AmbientLight(0xffffff);
 		scene.add(ambientLight);
 
-		if (is3D) {
-			var directionalLight = new THREE.DirectionalLight(0xffffff);
+		
+			directionalLight = new THREE.DirectionalLight(0xffffff);
 			directionalLight.position.x = 1;
 			directionalLight.position.y = 0.2;
 			directionalLight.position.z = -0.2;
 			directionalLight.position.normalize();
+		if (is3D) {
 			scene.add(directionalLight);
 		}
 
@@ -587,7 +756,7 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 		knotRenderer.render(knotScene, knotCamera);
 
-		var knotDragger = new KnotDraggerMean(curve, function() {
+		var knotDragger = new KnotDragger(curve, function() {
 			cEditor.update();
 			bsCurves.update();
 			cEditor.updateCurvePoint();
@@ -658,53 +827,157 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 	function initGui() {
 		gui = new dat.GUI({ width: 512, resizable : false });
+		var params = {
+			p: 3,
+			curv: 0
+		};
+		var typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
 
-		
-		var typeChange = gui.add(curve, 'curvetype', [ 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky' ] ).name('Curve type');
+		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
 		typeChange.onChange(function(value) {
+			if(curve.curvetype === 'Bézier') {
+				hideGUIElem(curveDegree);
+				hideGUIElem(parameterD);
+				hideGUIElem(insertKnot);
+				showGUIElem(elevateDegree);
+				curve.setDegree(curve.n);
+				var knotDragger = new KnotDragger(curve, function() {
+					cEditor.update();
+					bsCurves.update();
+					cEditor.updateCurvePoint();
+				});
+			} else if(curve.curvetype === 'B-spline') {
+				hideGUIElem(parameterD);
+				showGUIElem(curveDegree);
+				hideGUIElem(insertKnot);
+				curve.setDegree(params.p);
+				var knotDragger = new KnotDragger(curve, function() {
+					cEditor.update();
+					bsCurves.update();
+					cEditor.updateCurvePoint();
+				});
+				
+			} else {
+				showGUIElem(parameterD);
+				showGUIElem(insertKnot);
+				hideGUIElem(curveDegree);
+				hideGUIElem(elevateDegree);
+				var knotDragger = new KnotDraggerMean(curve, function() {
+					cEditor.update();
+					bsCurves.update();
+					cEditor.updateCurvePoint();
+				});
+				bsCurves.resetGeometry(curve);
+			}
 			cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.update();
+			
 		});
 
-		var parameterD = gui.add( cEditor, 'd' ).min(0).max(10).step(0.01).name('d');
+		parameterD = gui.add( cEditor, 'd' ).min(0).max(10).step(0.01).name('d');
 		parameterD.onChange(function(value) {
 			curve.setD(cEditor.d);
 			cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.update();
 		});
+		//parameterD.domElement.parentNode.parentNode.style.display = 'block';
 
-		var params = {
-			p: 3,
-			curv: 0
-		};
 
-		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.01).name('Parameter (t)');
+
+
+		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
+		curveDegree.onChange(function() {
+			if (curve.p != params.p) {
+				curve.setDegree(params.p);
+				cEditor.update();
+				cEditor.updateCurvePoint();
+				bsCurves.resetGeometry(curve);
+				var knotDragger = new KnotDragger(curve, function() {
+					cEditor.update();
+					bsCurves.update();
+					cEditor.updateCurvePoint();
+				});
+			}
+		});
+		hideGUIElem(curveDegree);
+
+		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.001).name('Parameter (t)');
 		parameter.onChange(function() {
 			cEditor.updateCurvePoint();
-			params.curv = JSCAGD.NumDer.getCurvature(curve, cEditor.t);
+			//params.curv = JSCAGD.NumDer.getCurvature(curve, cEditor.t);
 		});
 
 
 
-		var curvParam = gui.add(params, 'curv').step(0.0001).name('Curvature').listen();
+		//var curvParam = gui.add(params, 'curv').step(0.0001).name('Curvature').listen();
 
 
-		var showPoint = gui.add(cEditor, 'showPoint').name('Show moving point');
+		var showPoint = gui.add(cEditor, 'showPoint').name('Moving point at t');
 		showPoint.onChange(function() {
 			cEditor.setShow();
 		});
 
-		var showCurf = gui.add(cEditor, 'showCurv').name('Show curvature fence');
+		var showCurf = gui.add(cEditor, 'showCurv').name('Curvature fence');
 		showCurf.onChange(function() {
 			cEditor.setShowCurf();
 		});
 
-		var insertKnot = { add:function(){ 
+		var showFrame = gui.add(cEditor, 'showFrame').name('Frenet frame');
+		showFrame.onChange(function() {
+			cEditor.setShow();
+		});
+
+		var showCirc = gui.add(cEditor, 'showCirc').name('Osculating circle');
+		showCirc.onChange(function() {
+			cEditor.setShow();
+		});
+
+		var is3DParam = {
+			is3DON: false
+		}
+
+		var trigger3D = gui.add(is3DParam, 'is3DON').name('3D');
+		trigger3D.onChange(function() {
+			is3D = is3DParam.is3DON;
+			is2D = !is3D;
+			
+			if (is2D) {
+				camera = camera2D;	
+				scene.remove(directionalLight);
+				orbit.dispose();
+				scene.remove(grid3D);
+			} else {
+				camera = camera3D;
+				scene.add(directionalLight);
+				orbit = new THREE.OrbitControls(camera, renderer.domElement);
+				scene.add(grid3D);
+			}
+			controlNet.reset(camera); 
+			render();
+		});
+		
+		var evelateDegreeFun = { preform:function(){ 
+			curve.elevateDegree();
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
+		}};
+
+		elevateDegree = gui.add(evelateDegreeFun,'preform').name('Degree elevation');
+		//hideGUIElem(elevateDegree);
+
+		var insertKnotFun = { add:function(){ 
 			curve.insertKnot(cEditor.t); 
 			cEditor.update(); 
-			controlNet.reset(); 
+			controlNet.reset(camera); 
 			bsCurves.resetGeometry(curve);
 			var knotDragger = new KnotDraggerMean(curve, function() {
 				cEditor.update();
@@ -713,13 +986,32 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 			});
 		}};
 
-		gui.add(insertKnot,'add').name('Insert knot');
 
+
+
+		insertKnot = gui.add(insertKnotFun,'add').name('Insert knot');
+		showGUIElem(curveDegree);
+		hideGUIElem(parameterD);
+		hideGUIElem(insertKnot);
+		hideGUIElem(elevateDegree);
 		gui.open();
 
 		var x = document.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
 		var customLi = document.createElement("li");
 		customLi.className = 'cr number knotli';
+
+		var triggerLI = { trigger: function() {
+				if(!knotclosed) {
+			    	customLi.style.height = 0 + 'px';
+			    	knotclosed = true;
+				} else {
+					customLi.style.height = 320 + 'px';
+					knotclosed = false;
+				}
+			}
+		};
+		gui.add(triggerLI,'trigger').name('Show/hide base functions and knots');
+
 		x[0].appendChild(customLi);
 
 		var knotDiv = document.getElementById("knot");
@@ -730,8 +1022,8 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 		close[0].addEventListener('click', function (event) {
 			if(gui.closed) {
 		    	customLi.style.height = 0 + 'px';
-			} else {
-				customLi.style.height = 320 + 'px';
+			} else if(!knotclosed) {
+				customLi.style.height = 320 + 'px';	
 			}
 		 });
 		customLi.style.height = 320 + 'px';
@@ -757,16 +1049,16 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 	function onWindowResize() {
 
-		if(is3D) {
-			camera.aspect = window.innerWidth / window.innerHeight;
-			camera.updateProjectionMatrix();
-		} else {
-			camera.left = window.innerWidth / - 2;
-			camera.right = window.innerWidth / 2;
-			camera.top = window.innerHeight / 2;
-			camera.bottom = window.innerHeight / - 2;
-			camera.updateProjectionMatrix();
-		}
+		
+			camera3D.aspect = window.innerWidth / window.innerHeight;
+			camera3D.updateProjectionMatrix();
+		
+			camera2D.left = window.innerWidth / - 2;
+			camera2D.right = window.innerWidth / 2;
+			camera2D.top = window.innerHeight / 2;
+			camera2D.bottom = window.innerHeight / - 2;
+			camera2D.updateProjectionMatrix();
+		
 		
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		render();
