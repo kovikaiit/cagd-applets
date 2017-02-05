@@ -187,11 +187,12 @@ function getCircleOrig(curve, t) {
 
 // Curve drawing and edit/update handler
 
-var CurveEditor = function(curve, material, movingpointmaterial) {
+var CurveEditor = function(curve, material, movingpointmaterial, knotpointmaterial) {
 
 	THREE.Object3D.call(this);
 
 	this.curve = curve;
+	this.knotpointmaterial = knotpointmaterial;
 
 	this.curvatureFence = new THREE.Object3D();
 
@@ -222,13 +223,21 @@ var CurveEditor = function(curve, material, movingpointmaterial) {
 	this.showCurv = false;
 	this.showFrame = false;
 	this.showCirc = false;
-	
+	this.showKnots = true;
 
 
 	var pos = this.curve.getPoint(this.t);
 	var geometry = new THREE.SphereGeometry(10, 32, 32);
 	this.curvePoint = new THREE.Mesh(geometry, movingpointmaterial);
 	this.curvePoint.position.set(pos.x, pos.y, pos.z);
+
+
+	this.knotPoints = new THREE.Object3D();
+	this.knotPointsList = [];
+
+	this.reset();
+
+
     var curvature = JSCAGD.NumDer.getCurvature(this.curve, this.t);
 	this.osculatingCir =  new THREE.TorusGeometry( 1/curvature, 1, 16, 100 );
 	//this.osculatingCir.position.set(pos.x, pos.y, pos.z);
@@ -380,25 +389,29 @@ CurveEditor.prototype.updateCurvePoint = function() {
 		this.bArrow.setDirection(frenetFrame.binormal);
 	}
 
-	//}
 	if (this.showCirc) {
 		var curvature = JSCAGD.NumDer.getCurvature(this.curve, this.t);
 		this.osculatingCir =  new THREE.TorusGeometry( 1/curvature, 1, 16, 100 );
-	//this.osculatingCir.position.set(pos.x, pos.y, pos.z);
-	//this.torus = new THREE.Mesh( this.osculatingCir, movingpointmaterial );
-	this.torus.geometry.dispose();
-	this.torus.geometry = this.osculatingCir;
-	var orig = getCircleOrig(this.curve, this.t);
-	this.torus.position.set(orig.x, orig.y, orig.z);
+		this.torus.geometry.dispose();
+		this.torus.geometry = this.osculatingCir;
+		var orig = getCircleOrig(this.curve, this.t);
+		this.torus.position.set(orig.x, orig.y, orig.z);
 
-	if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
-		var binormal = this.curve.getBinormalBS(this.t);
-		orig.add(binormal);
-		this.torus.lookAt(orig);
+		if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
+			var binormal = this.curve.getBinormalBS(this.t);
+			orig.add(binormal);
+			this.torus.lookAt(orig);
+		}
 	}
-	
-////		this.add(this.curvePoint);
-		//this.add(this.torus);
+	if (this.showKnots) {
+		
+		for (var i = this.knotlist.length - 1; i >= 0; i--) {
+			var ti = this.knotlist[i];
+			pos = this.curve.getPoint(ti);
+			var pt = this.knotPointsList[i];
+			pt.position.set(pos.x, pos.y, pos.z);
+		}
+		
 	}
 
 };
@@ -450,6 +463,11 @@ CurveEditor.prototype.setShow = function() {
 	} else {
 		this.remove(this.torus);
 	}
+	if (this.showKnots) {
+		this.add(this.knotPoints);
+	} else {
+		this.remove(this.knotPoints);
+	}
 };
 
 CurveEditor.prototype.setShowCurf = function() {
@@ -458,6 +476,35 @@ CurveEditor.prototype.setShowCurf = function() {
 		this.add(this.curvatureFence);
 	} else {
 		this.remove(this.curvatureFence);
+	}
+};
+
+CurveEditor.prototype.reset = function() {
+	this.remove(this.knotPoints);
+	this.knotPoints = new THREE.Object3D();
+     this.knotPointsList = [];
+	if(this.curve.curvetype === 'B-spline') {
+		this.knotlist = this.curve.U;
+	} else if (this.curve.curvetype === 'P-curve') {
+		this.knotlist = this.curve.knot;
+	}  else if (this.curve.curvetype === 'Bézier') {
+		this.knotlist = [];
+		for (var i = 0; i <= this.curve.n; i++) {
+			this.knotlist[i] =  i/this.curve.n;
+		}
+	}
+	for (var i = this.knotlist.length - 1; i >= 0; i--) {
+		var ti = this.knotlist[i];
+		var pos = this.curve.getPoint(ti);
+		var geometry = new THREE.SphereGeometry(6, 32, 32);
+		var pt = new THREE.Mesh(geometry, this.knotpointmaterial);
+		pt.position.set(pos.x, pos.y, pos.z);
+		this.knotPoints.add(pt);
+		this.knotPointsList[i] = pt;
+	}
+	
+	if (this.showKnots) {
+		this.add(this.knotPoints);
 	}
 };
 
@@ -805,7 +852,13 @@ function showGUIElem(datguielement) {
 			shading: THREE.SmoothShading
 		});
 
-		cEditor = new CurveEditor(curve, material, movingpointmaterial);
+		var knotpointmaterial = new THREE.MeshLambertMaterial({
+			color: 0x2fa1d6,
+			shading: THREE.SmoothShading
+		});
+
+
+		cEditor = new CurveEditor(curve, material, movingpointmaterial, knotpointmaterial);
 		scene.add(cEditor);
 		for (var i = 0; i < 10; i++) {
 			//var curve2 = new JSCAGD.MeanCurve(P, n, 0.4*i);
@@ -835,6 +888,7 @@ function showGUIElem(datguielement) {
 
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
 		typeChange.onChange(function(value) {
+			
 			if(curve.curvetype === 'Bézier') {
 				hideGUIElem(curveDegree);
 				hideGUIElem(parameterD);
@@ -869,6 +923,7 @@ function showGUIElem(datguielement) {
 				});
 				bsCurves.resetGeometry(curve);
 			}
+			cEditor.reset();
 			cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.update();
@@ -891,6 +946,7 @@ function showGUIElem(datguielement) {
 		curveDegree.onChange(function() {
 			if (curve.p != params.p) {
 				curve.setDegree(params.p);
+				cEditor.reset();
 				cEditor.update();
 				cEditor.updateCurvePoint();
 				bsCurves.resetGeometry(curve);
@@ -899,6 +955,7 @@ function showGUIElem(datguielement) {
 					bsCurves.update();
 					cEditor.updateCurvePoint();
 				});
+
 			}
 		});
 		hideGUIElem(curveDegree);
@@ -913,6 +970,10 @@ function showGUIElem(datguielement) {
 
 		//var curvParam = gui.add(params, 'curv').step(0.0001).name('Curvature').listen();
 
+		var showKnots = gui.add(cEditor, 'showKnots').name('Knots on the curve');
+		showKnots.onChange(function() {
+			cEditor.setShow();
+		});
 
 		var showPoint = gui.add(cEditor, 'showPoint').name('Moving point at t');
 		showPoint.onChange(function() {
@@ -988,6 +1049,27 @@ function showGUIElem(datguielement) {
 
 
 
+		var plusD = function (e) { 
+			e = e || event
+			if(e.keyCode === 187 || e.keyCode === 3) {
+				if (curve.curvetype==='B-spline') {
+					curveDegree.setValue(params.p + 1);
+				} else if (curve.curvetype === 'P-curve') {
+					parameterD.setValue(cEditor.d + 0.2);
+				} 
+			} else if (e.keyCode === 189){
+				if (curve.curvetype==='B-spline') {
+					curveDegree.setValue(params.p - 1);
+				} else if (curve.curvetype === 'P-curve' ) {
+					parameterD.setValue(cEditor.d - 0.2);
+				}
+			} else if (e.keyCode === 39) {
+				parameter.setValue(cEditor.t + 0.01)
+			} else if (e.keyCode === 37) {
+				parameter.setValue(cEditor.t - 0.01)
+			}
+		}
+		document.onkeydown = plusD;
 
 		insertKnot = gui.add(insertKnotFun,'add').name('Insert knot');
 		showGUIElem(curveDegree);

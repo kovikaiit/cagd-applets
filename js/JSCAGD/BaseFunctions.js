@@ -68,6 +68,10 @@ JSCAGD.KnotVector = {};
  * @param {Number} p - The degree
  */
 JSCAGD.KnotVector.createUniform = function(n, p) {
+	if(p > n) 
+	{
+		p= n;
+	}
 	var U = [];
 	var m = n + p + 1;
 	var diff = 1 / (m - 2 * p);
