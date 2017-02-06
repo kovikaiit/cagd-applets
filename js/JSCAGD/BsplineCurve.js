@@ -32,6 +32,24 @@ JSCAGD.BsplineCurve = JSCAGD.ParametricCurve.create(
 	}
 );
 
+
+/**
+ * Evals the i-th base function
+ * @param {Number} t - Parameter
+ * @param {Number} i - Index 
+ * @return {Number} - The function value
+ */
+JSCAGD.BsplineCurve.prototype.evalBase = function(t, i) {
+	var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
+	var N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
+	if (span - this.c_geom.p  <=  this.i && this.i <= span) {
+		return  N[this.i - span + this.c_geom.p];
+	} else {
+		return 0;
+	}
+};
+
+
 /**
  * Set the degree and reinitalize the uniform knot vector
  * @param {Number} p - Degree
@@ -118,7 +136,11 @@ JSCAGD.BsplineCurve.prototype.getBinormal = function(u) {
 	return b.crossVectors(tangent, normal);
 };
 
-
+/**
+ * Frenet frame vectors
+ * @param  {Number} u - The parameter
+ * @return {Object}  - The vector triplet
+ */
 JSCAGD.BsplineCurve.prototype.getFrenetFrame = function(u) {
 	var derivs = this.getAllDeriv(2, u);
 
