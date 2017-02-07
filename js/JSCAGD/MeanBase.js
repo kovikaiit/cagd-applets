@@ -461,6 +461,11 @@ JSCAGD.MeanCurve.prototype.findSpan = function(t) {
 	}
 };
 
+
+JSCAGD.MeanCurve.prototype.setU = function(U) {
+	this.U = U;
+};
+
 JSCAGD.MeanCurve.prototype.setDegree = function(p) {
 	this.p = p;
 	this.U = JSCAGD.KnotVector.createUniform(this.n, this.p);

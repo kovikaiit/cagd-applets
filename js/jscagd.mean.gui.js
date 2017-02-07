@@ -49,7 +49,7 @@ function showGUIElem(datguielement) {
 	var camera2D, camera3D, directionalLight, grid3D;
 
 	var knotScene, knotCamera, knotContainer, knotRenderer;
-	var parameterD, insertKnot, curveDegree, elevateDegree;
+	var parameterD, insertKnot, curveDegree, elevateDegree, typeChange, params;
 	init();
 
 	render();
@@ -113,16 +113,19 @@ function showGUIElem(datguielement) {
 		// OrbitControl
 		if (is3D) {
 			orbit = new THREE.OrbitControls(camera, renderer.domElement);
+
 		} 
 		
 		initCurve();
 
 		initGui();
 
-initOptionsGui();
+		initOptionsGui();
 		initKnotEditor();
 
-		
+
+		console.log(saveFile());
+		loadCurve(saveFile());
 
 		window.addEventListener('resize', onWindowResize, false);
 		renderer.render(scene, camera);
@@ -195,11 +198,11 @@ initOptionsGui();
 
 	function initGui() {
 		gui = new dat.GUI({ width: 512, resizable : false });
-		var params = {
+		params = {
 			p: 3,
 			curv: 0
 		};
-		var typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
+		typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
 
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
 		typeChange.onChange(function(value) {
@@ -361,16 +364,17 @@ initOptionsGui();
 		}};
 
 
+			
 
 		var plusD = function (e) { 
 			e = e || event
-			if(e.keyCode === 187 || e.keyCode === 3) {
+			if(e.keyCode === 187 || e.keyCode === 3 || e.keyCode === 107) {
 				if (curve.curvetype==='B-spline') {
 					curveDegree.setValue(params.p + 1);
 				} else if (curve.curvetype === 'P-curve') {
 					parameterD.setValue(cEditor.d + 0.2);
 				} 
-			} else if (e.keyCode === 189){
+			} else if (e.keyCode === 189 || e.keyCode === 109){
 				if (curve.curvetype==='B-spline') {
 					curveDegree.setValue(params.p - 1);
 				} else if (curve.curvetype === 'P-curve' ) {
@@ -393,7 +397,7 @@ initOptionsGui();
 		hideGUIElem(elevateDegree);
 		gui.open();
 
-		var x = document.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
+		var x = gui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
 		var customLi = document.createElement("li");
 		customLi.className = 'cr number knotli';
 
@@ -464,6 +468,31 @@ initOptionsGui();
 		//	cEditor.update();
 		//});
 		//dat.GUI.hideableGuis.remove(optionsGui);
+
+		var saveFileFun = { save:function() {
+			var blob = new Blob([saveFile()], {type: "text/plain;charset=utf-8"});
+			saveAs(blob, "curve.txt");
+		}};
+		optionsGui.add(saveFileFun,'save').name('Save curve');
+
+
+
+		var newInput = document.createElement("INPUT");
+        newInput.id = "file-input";
+        newInput.type = "file";
+
+		var x = optionsGui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
+		var customLi = document.createElement("li");
+		customLi.className = 'cr number openli';
+
+		x[0].appendChild(customLi);
+
+		customLi.appendChild(newInput);
+
+
+
+
+
 		optionsGui.domElement.style.display = 'none';
 		triggerHide = function (){
 			var state = optionsGui.domElement.style.display;
@@ -473,6 +502,68 @@ initOptionsGui();
 				optionsGui.domElement.style.display = 'none';
 			}
 		}
+	}
+
+	function saveFile() {
+		var retval = "";
+		retval += "TYPE " + curve.curvetype + "\n";
+		if (curve.curvetype === 'B-spline') {
+			retval += "P " + curve.p.toString() + "\n";
+			for (var i = 0; i < curve.U.length; i++) {
+				retval += "KNOT " + curve.U[i].toString() + "\n";
+			}
+		} else if (curve.curvetype === 'Bézier')  {
+			retval += "D " + curve.d.toString() + "\n";
+			for (var i = 0; i < curve.knot.length; i++) {
+				retval += "KNOT " + curve.knot[i].toString() + "\n";
+			}
+		}
+		for (var i = 0; i < curve.P.length; i++) {
+			retval += "CP " + curve.P[i].x.toString() + " " +curve.P[i].y.toString() + " " + curve.P[i].z.toString() + "\n";
+		}
+		return retval;
+	}
+
+	function loadCurve(content) {
+		var lines = content.split('\n');
+		var CP_ = [];
+		var knots_ = [];
+		var type_, d_, p_;
+	    for(var i = 0; i < lines.length; i++){
+	    	var tokens = lines[i].split(" ");
+	      	if(tokens[0] === "TYPE") {
+	      		type_ = tokens[1];
+	      	} else if(tokens[0] === "D") {
+	      		d_ = parseFloat(tokens[1]);
+	      	} else if(tokens[0] === "P") {
+	      		p_ = parseInt(tokens[1]);
+	      	} else if(tokens[0] === "KNOT") {
+	      		knots_.push(parseFloat(tokens[1]));
+	      	}  else if(tokens[0] === "CP") {
+	      		CP_.push(new THREE.Vector3(parseFloat(tokens[1]), parseFloat(tokens[2]), parseFloat(tokens[3])));
+	      	} 
+	    }
+	    if(type_ === "B-spline" && p_ !== 'undefined') {
+	    	
+	    	typeChange.setValue(type_);
+	    	//curve.U = knots_;
+	    	curveDegree.setValue(p_);
+	    	curve.setU(knots_);
+	    	//console.log(knots_.toString());
+	    	curve.P = CP_;
+	    	//typeChange.setValue(type_);
+	    	cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
+	    } else {
+	    	console.warn("Load faliure");
+	    }
 	}
 
 
