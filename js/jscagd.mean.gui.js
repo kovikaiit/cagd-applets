@@ -477,9 +477,27 @@ function showGUIElem(datguielement) {
 
 
 
+
 		var newInput = document.createElement("INPUT");
         newInput.id = "file-input";
         newInput.type = "file";
+        newInput.addEventListener('change', readSingleFile, false);
+        
+        function readSingleFile(e) {
+		  var file = e.target.files[0];
+		  if (!file) {
+		    return;
+		  }
+		  var reader = new FileReader();
+		  reader.onload = function(e) {
+		    var contents = e.target.result;
+		    loadCurve(contents);
+		  };
+		  reader.readAsText(file);
+		}
+
+
+
 
 		var x = optionsGui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
 		var customLi = document.createElement("li");
@@ -512,7 +530,7 @@ function showGUIElem(datguielement) {
 			for (var i = 0; i < curve.U.length; i++) {
 				retval += "KNOT " + curve.U[i].toString() + "\n";
 			}
-		} else if (curve.curvetype === 'Bézier')  {
+		} else if (curve.curvetype === 'P-curve')  {
 			retval += "D " + curve.d.toString() + "\n";
 			for (var i = 0; i < curve.knot.length; i++) {
 				retval += "KNOT " + curve.knot[i].toString() + "\n";
@@ -546,12 +564,49 @@ function showGUIElem(datguielement) {
 	    if(type_ === "B-spline" && p_ !== 'undefined') {
 	    	
 	    	typeChange.setValue(type_);
+	    	curve.n = CP_.length - 1; 
 	    	//curve.U = knots_;
 	    	curveDegree.setValue(p_);
 	    	curve.setU(knots_);
 	    	//console.log(knots_.toString());
 	    	curve.P = CP_;
 	    	//typeChange.setValue(type_);
+	    	cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
+	    } else if(type_ === "Bézier" && p_ !== 'undefined') {
+	    	
+	    	curve.P = CP_;
+	    	curve.n = CP_.length - 1; 
+	    	typeChange.setValue(type_);
+	    	
+	    	cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			var knotDragger = new KnotDragger(curve, function() {
+				cEditor.update();
+				bsCurves.update();
+				cEditor.updateCurvePoint();
+			});
+	    } else if(type_ === "P-curve" && d_ !== 'undefined') {
+	    	
+	    	typeChange.setValue(type_);
+	    	curve.n = CP_.length - 1; 
+	    	//curve.U = knots_;
+	    	//curveDegree.setValue(p_);
+	    	
+	    	curve.knot = knots_;
+	    	//console.log(knots_.toString());
+	    	curve.P = CP_;
+	    	//typeChange.setValue(type_);
+	    	parameterD.setValue(d_);
 	    	cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);

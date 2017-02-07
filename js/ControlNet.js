@@ -13,11 +13,11 @@ var controlNetParameters = {
 			shading: THREE.SmoothShading
 		}),
 
-		dashedmaterial: new THREE.LineDashedMaterial({
-			color: 0x000000,
-			linewidth: 1,
-			dashSize: 30,
-			gapSize: 20
+		dashedmaterial: new THREE.LineBasicMaterial({
+			color: 0xAA0000,
+			linewidth: 1
+			//dashSize: 30,
+			//gapSize: 20
 		}),
 
 		pointRadius: 12

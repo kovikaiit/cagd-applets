@@ -9,7 +9,7 @@ var is3D = !is2D;
 
 var curveParameters = {
 		material: new THREE.MeshLambertMaterial({
-			color: 0x444444,
+			color: 0x000bbb,
 			shading: THREE.SmoothShading
 		}),
 
@@ -24,7 +24,7 @@ var curveParameters = {
 		}),
 
 		curvfencematerial:  new THREE.LineBasicMaterial( { 
-			color: 0xff0000, 
+			color: 0x2e9800, 
 			linewidth: 1 
 		}),
 
