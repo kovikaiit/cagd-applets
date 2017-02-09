@@ -106,14 +106,14 @@ function PointOnBezierCurve(P, n, u)
 	return C;
 }
 
-function PointOnBezierSurface(P, n, u, v)
+function PointOnBezierSurface(P, n, m, u, v)
 { 
 	var Bu = AllBernstein(n, u);
-	var Bv = AllBernstein(n, v);
+	var Bv = AllBernstein(m, v);
 	var C = new THREE.Vector3(0.0, 0.0, 0.0);
 	for (k = 0; k <= n; k++) 
 	{
-		for (l = 0; l <= n; l++) 
+		for (l = 0; l <= m; l++) 
 		{
 			C.addScaledVector(P[k][l], Bu[k]*Bv[l]);
 		}
@@ -121,6 +121,21 @@ function PointOnBezierSurface(P, n, u, v)
 	return C;
 }
 
+function TangentUOnBezierSurface(P, n, m, u, v)
+{ 
+	var UCurve = function(u_) {
+		return PointOnBezierSurface(P, n, m, u_, v);
+	};
+	return JSCAGD.NumDer.getTangent(UCurve)(u);
+}
+
+function TangentVOnBezierSurface(P, n, m, u, v)
+{ 
+	var VCurve = function(v_) {
+		return PointOnBezierSurface(P, n, m, u, v_);
+	};
+	return JSCAGD.NumDer.getTangent(VCurve)(v);
+}
 
 
 

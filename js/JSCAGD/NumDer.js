@@ -18,20 +18,20 @@ JSCAGD.NumDer.getTangent = function( getPoint ) {
 		if (t===1) { t = t-delta; }
 		if (t===0) { t = t+delta; }
 			
-			var t1 = t - delta;
-			var t2 = t + delta;
+		var t1 = t - delta;
+		var t2 = t + delta;
 
-			// Capping in case of danger
+		// Capping in case of danger
 
-			if ( t1 < 0 ) t1 = 0;
-			if ( t2 > 1 ) t2 = 1;
+		if ( t1 < 0 ) t1 = 0;
+		if ( t2 > 1 ) t2 = 1;
 
-			var pt1 = getPoint( t1 );
-			var pt2 = getPoint( t2 );
+		var pt1 = getPoint( t1 );
+		var pt2 = getPoint( t2 );
 
-			var vec = pt2.clone().sub( pt1 );
-			return vec.normalize();
-		};
+		var vec = pt2.clone().sub( pt1 );
+		return vec.normalize();
+	};
 
 };
 

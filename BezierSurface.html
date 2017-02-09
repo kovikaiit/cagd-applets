@@ -13,23 +13,26 @@
 			overflow: hidden;
 		}
 	</style>
-        
+	<script src="js/dat.gui.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="style.css">
     </head>
     <body>
 		<div id="container"></div>
         <script src="js/three.min.js"></script>
+        		<script src="js/JSCAGD/NumDer.js"></script>
 		<script src="js/OrbitControls.js"></script>
 		<script src="js/bezier.js"></script>
 		<script src="js/TransformControls.js"></script>
-		<script src="js/dat.gui.min.js"></script>
+		
+
 		<script>
 			var container;
 			var scene, camera, renderer;
 			var geometry, material, surfaceMesh, tube, controlPolygons, controlPolygonPaths, bezierGeometry;
 			var controlPoints = [];
-			var dashedmaterial, pointmaterial, movingpointmaterial;
+			var material, dashedmaterial, pointmaterial, movingpointmaterial;
 			var orbit;
-			var P;
+			var P, P_rev;
 			var control;
 			var mouse = new THREE.Vector2();
 			var raycaster;
@@ -38,6 +41,7 @@
 			var gui;
 			var parameters;
 			var curvePoint;
+			var n, m;
 
 			init();
 			render();
@@ -61,11 +65,27 @@
 				var ambientLight = new THREE.AmbientLight( 0xffffff );
 				scene.add( ambientLight );
 				var directionalLight = new THREE.DirectionalLight( 0xffffff );
-				directionalLight.position.x = 1;
-				directionalLight.position.y = 1;
-				directionalLight.position.z = 1;
-				directionalLight.position.normalize();
+				directionalLight.position.x = 50;
+				directionalLight.position.y = 200;
+				directionalLight.position.z = 0;
+				//directionalLight.position.normalize();
 				scene.add( directionalLight );
+
+				var directionalLight2 = new THREE.DirectionalLight( 0xffffff );
+				directionalLight2.position.copy( camera.position );
+				scene.add( directionalLight2 );
+
+
+				var pointLight = new THREE.PointLight( 0xffffff, 4, 800 );
+								pointLight.position.x = 0;
+				pointLight.position.y = 600;
+				pointLight.position.z = 0;
+				scene.add( pointLight );
+				var pointLight2 = new THREE.PointLight( 0xffffff, 4, 800 );
+				pointLight2.position.x = 0;
+				pointLight2.position.y = -600;
+				pointLight2.position.z = 0;
+				scene.add( pointLight2 );
 
 				// Renderer
 				renderer = new THREE.WebGLRenderer({ antialias: true } );
@@ -84,15 +104,26 @@
 				
 				// OrbitControl
 				orbit = new THREE.OrbitControls( camera, renderer.domElement );
+				orbit.addEventListener( 'change', light_update );
+
+				function light_update()
+				{
+				    directionalLight2.position.copy( camera.position );
+				}
 				//orbit.enableZoom = false;
 				
 				// Materials
-				material = new THREE.MeshLambertMaterial( { color: 0x444444, shading: THREE.SmoothShading, side: THREE.DoubleSide} ) ;
-				pointmaterial = new THREE.MeshLambertMaterial( { color: 0x8C001A, shading: THREE.SmoothShading } ) ;
+
+				
+				material = new THREE.MeshPhongMaterial( { color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, metalness: 10.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
+				pointmaterial = new THREE.MeshLambertMaterial( { color: 0xAA0000, shading: THREE.SmoothShading } ) ;
 				movingpointmaterial = new THREE.MeshLambertMaterial( { color: 0x2e9800, shading: THREE.SmoothShading } ) ;
-				dashedmaterial = new THREE.LineDashedMaterial({
-					color: 0x000000, linewidth: 1, dashSize: 30, gapSize: 20
-				});
+				dashedmaterial = new THREE.LineBasicMaterial({
+					color: 0xAA0000,
+					linewidth: 1
+					//dashSize: 30,
+					//gapSize: 20
+				})
 
 				
 				//GUI 
@@ -120,16 +151,29 @@
 			
 			function initSurface() {
 				// Surface parameters
-				n = 3;
-				P = []
+				n = 4;
+				m = 3;
+				P = [];
+				P_rev = [];
 				for (k = 0; k <= n; k++) 
 				{
 					P.push(new Array())
-					for (l = 0; l <= n; l++) 
+					for (l = 0; l <= m; l++) 
 					{
-						P[k][l] = new THREE.Vector3(400 - k * 200, 20*k*l, 500 - l * 200);
+						P[k][l] = new THREE.Vector3(400 - k * 200, 20*(k-2)*(l-2) + 100, 400 - l * 200);
 					}
 				}
+				for (l = 0; l <= m; l++) 
+				{
+					P_rev.push(new Array())
+					for (k = 0; k <= n; k++) 
+					{
+						
+						P_rev[l][k] =  P[k][l];
+						
+					}
+				}
+
 			}
 			
 			function initGui() {
@@ -146,17 +190,19 @@
 				parameter.onChange(function(value) {
 					updateSurfacePoint();
 				});
-				var parameter = gui.add( parameters, 'v' ).min(0).max(1).step(0.01).name('Parameter (v)');
-				parameter.onChange(function(value) {
+				var parameterV = gui.add( parameters, 'v' ).min(0).max(1).step(0.01).name('Parameter (v)');
+				parameterV.onChange(function(value) {
 					updateSurfacePoint();
 				});
+				var opacity = gui.add( material, 'opacity' ).min(0).max(1).step(0.01).name('Opacity');
+				
 				gui.open();
 			}
 			
 			function drawSurface() {
 				var x = PointOnBezierSurface(P, n, 0.5, 0.5);
 				bezierGeometry = new THREE.ParametricGeometry(function ( u, v ) { 
-					return PointOnBezierSurface(P, n, u, v);
+					return PointOnBezierSurface(P, n, m, u, v);
     			}, 20, 20 );
 
 				controlPolygonPaths = new Array();
@@ -169,6 +215,14 @@
 					controlPolygonPaths.push(new THREE.Line( controlPolygons[k], dashedmaterial ));	
 					scene.add( controlPolygonPaths[k] );
 				}
+				for (l = 0; l <= m; l++) 
+				{
+					controlPolygons.push(new THREE.Geometry());
+					controlPolygons[n + 1 + l].vertices = P_rev[l];
+					controlPolygons[n + 1 + l].computeLineDistances();
+					controlPolygonPaths.push(new THREE.Line( controlPolygons[n + 1 + l], dashedmaterial ));	
+					scene.add( controlPolygonPaths[n + 1 + l] );
+				}
 				// Mesh generation
 				surfaceMesh = new THREE.Mesh( bezierGeometry, material );
 				scene.add( surfaceMesh );
@@ -178,9 +232,9 @@
 				for (k = 0; k <= n; k++) 
 				{
 					controlPoints.push(new Array());
-					for (l = 0; l <= n; l++) 
+					for (l = 0; l <= m; l++) 
 					{
-						var geometry = new THREE.SphereGeometry(20, 32, 32);
+						var geometry = new THREE.SphereGeometry(15, 32, 32);
 						//geometry.translate(P[i].x, P[i].y, P[i].z);
 						var sphere = new THREE.Mesh( geometry, pointmaterial );
 						sphere.position.set(P[k][l].x, P[k][l].y, P[k][l].z);
@@ -189,26 +243,47 @@
 						scene.add(sphere);
 					}
 				}
+				this.showPoint = true;
+				this.showFrame = true;
 				
 				// Point at 't'
-				var geometry = new THREE.SphereGeometry(25, 32, 32);
+				var geometry = new THREE.SphereGeometry(10, 32, 32);
 				curvePoint = new THREE.Mesh( geometry, movingpointmaterial );
-				var pos = PointOnBezierSurface(P, n, parameters.u, parameters.v);
+				var pos = PointOnBezierSurface(P, n, m, parameters.u, parameters.v);
 				curvePoint.position.set(pos.x, pos.y, pos.z);
 				scene.add(curvePoint);
+
+
+				var tangentU =  TangentUOnBezierSurface(P, n, m, parameters.u, parameters.v);
+				this.tArrow = new THREE.ArrowHelper(tangentU, pos, 200, 0x000000);
+				scene.add(this.tArrow);
+				var tangentV =  TangentVOnBezierSurface(P, n, m, parameters.u, parameters.v);
+				this.vArrow = new THREE.ArrowHelper(tangentV, pos, 200, 0x000000);
+				scene.add(this.vArrow);
+				var vectorx = new THREE.Vector3();
+				vectorx.crossVectors(tangentU, tangentV);
+				vectorx.multiplyScalar(-1);
+				this.nArrow = new THREE.ArrowHelper(vectorx, pos, 200, 0x000000);
+				scene.add(this.nArrow);
 			}
 			
 			function updateSurface() {
 				for (k = 0; k <= n; k++) 
 				{
-					
-					for (l = 0; l <= n; l++) 
+					for (l = 0; l <= m; l++) 
 					{
 						P[k][l] = controlPoints[k][l].position;
 					}
 				}
+				for (l = 0; l <= m; l++) 
+				{
+					for (k = 0; k <= n; k++) 
+					{		
+						P_rev[l][k] =  P[k][l];						
+					}
+				}
 				bezierGeometry = new THREE.ParametricGeometry(function ( u, v ) { 
-					return PointOnBezierSurface(P, n, u, v);
+					return PointOnBezierSurface(P, n, m, u, v);
     			}, 20, 20 );
 
 				
@@ -228,12 +303,37 @@
 					controlPolygons[k].computeLineDistances();
 					controlPolygonPaths[k].geometry = controlPolygons[k];	
 				}
-				
+				for (l = 0; l <= m; l++) 
+				{
+					controlPolygons[n + 1 + l] = new THREE.Geometry();
+					controlPolygons[n + 1 + l].vertices = P_rev[l];
+					controlPolygons[n + 1 + l].computeLineDistances();
+					controlPolygonPaths[n + 1 + l].geometry = controlPolygons[n + l];	
+				}		
 			}
 			
 			function updateSurfacePoint() {
-				var pos = PointOnBezierSurface(P, n, parameters.u, parameters.v);
+				var pos = PointOnBezierSurface(P, n, m, parameters.u, parameters.v);
 				curvePoint.position.set(pos.x, pos.y, pos.z);
+
+					if (this.showPoint) {
+						this.curvePoint.position.set(pos.x, pos.y, pos.z);
+					}
+					if (this.showFrame) {
+						
+
+						var tangentU =  TangentUOnBezierSurface(P, n, m, parameters.u, parameters.v);
+						this.tArrow.position.copy(pos);
+						this.tArrow.setDirection(tangentU);
+						var tangentV =  TangentVOnBezierSurface(P, n, m, parameters.u, parameters.v);
+						this.vArrow.position.copy(pos);
+						this.vArrow.setDirection(tangentV);
+						var vectorx = new THREE.Vector3();
+						vectorx.crossVectors(tangentU, tangentV);
+						vectorx.multiplyScalar(-1);
+						this.nArrow.position.copy(pos);
+						this.nArrow.setDirection(vectorx);
+					}
 			}
 
 			function render() {
