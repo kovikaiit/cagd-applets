@@ -60,8 +60,8 @@ function showGUIElem(datguielement) {
 		// Scene and camera
 		scene = new THREE.Scene();
 		camera3D = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 10000);
-		camera3D.position.set(2000, 800, 1300);
-		camera3D.lookAt(new THREE.Vector3(0,0,1));
+		camera3D.position.set(0, -2000, 800);
+		camera3D.lookAt(new THREE.Vector3(0,0,0));
 
 		camera2D = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
 		camera2D.position.x = 0;
@@ -114,6 +114,9 @@ function showGUIElem(datguielement) {
 		if (is3D) {
 			orbit = new THREE.OrbitControls(camera, renderer.domElement);
 
+				orbit.addEventListener( 'change', render );
+
+
 		} 
 		
 		initCurve();
@@ -124,8 +127,7 @@ function showGUIElem(datguielement) {
 		initKnotEditor();
 
 
-		console.log(saveFile());
-		loadCurve(saveFile());
+		
 
 		window.addEventListener('resize', onWindowResize, false);
 		renderer.render(scene, camera);
@@ -162,11 +164,7 @@ function showGUIElem(datguielement) {
 
 		knotRenderer.render(knotScene, knotCamera);
 
-		var knotDragger = new KnotDragger(curve, function() {
-			cEditor.update();
-			bsCurves.update();
-			cEditor.updateCurvePoint();
-		});
+		resetDragger();
 
 	}
 
@@ -192,8 +190,18 @@ function showGUIElem(datguielement) {
 			function() {
 				cEditor.update();
 				cEditor.updateCurvePoint();
+				render();
 			});
 		scene.add(controlNet);
+	}
+
+	function resetDragger() {
+		var knotDragger = new KnotDragger(curve, function() {
+			cEditor.update();
+			bsCurves.update();
+			cEditor.updateCurvePoint();
+			render();
+		});
 	}
 
 	function initGui() {
@@ -213,39 +221,27 @@ function showGUIElem(datguielement) {
 				hideGUIElem(insertKnot);
 				showGUIElem(elevateDegree);
 				curve.setDegree(curve.n);
-				var knotDragger = new KnotDragger(curve, function() {
-					cEditor.update();
-					bsCurves.update();
-					cEditor.updateCurvePoint();
-				});
+				resetDragger();
 			} else if(curve.curvetype === 'B-spline') {
 				hideGUIElem(parameterD);
 				showGUIElem(curveDegree);
 				hideGUIElem(insertKnot);
 				curve.setDegree(params.p);
-				var knotDragger = new KnotDragger(curve, function() {
-					cEditor.update();
-					bsCurves.update();
-					cEditor.updateCurvePoint();
-				});
+				resetDragger();
 				
 			} else {
 				showGUIElem(parameterD);
 				showGUIElem(insertKnot);
 				hideGUIElem(curveDegree);
 				hideGUIElem(elevateDegree);
-				var knotDragger = new KnotDragger(curve, function() {
-					cEditor.update();
-					bsCurves.update();
-					cEditor.updateCurvePoint();
-				});
+				resetDragger();
 				bsCurves.resetGeometry(curve);
 			}
 			cEditor.reset();
 			cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.update();
-			
+			render();
 		});
 
 		parameterD = gui.add( cEditor, 'd' ).min(0).max(10).step(0.01).name('d');
@@ -254,6 +250,7 @@ function showGUIElem(datguielement) {
 			cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.update();
+			render();
 		});
 		//parameterD.domElement.parentNode.parentNode.style.display = 'block';
 
@@ -266,19 +263,18 @@ function showGUIElem(datguielement) {
 				cEditor.update();
 				cEditor.updateCurvePoint();
 				bsCurves.resetGeometry(curve);
-				var knotDragger = new KnotDragger(curve, function() {
-					cEditor.update();
-					bsCurves.update();
-					cEditor.updateCurvePoint();
-				});
-
+				resetDragger();
+				render();
 			}
+
 		});
 		hideGUIElem(curveDegree);
 
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.001).name('Parameter (t)');
 		parameter.onChange(function() {
 			cEditor.updateCurvePoint();
+
+			render();
 			//params.curv = JSCAGD.NumDer.getCurvature(curve, cEditor.t);
 		});
 
@@ -289,26 +285,31 @@ function showGUIElem(datguielement) {
 		var showKnots = gui.add(cEditor, 'showKnots').name('Knots on the curve');
 		showKnots.onChange(function() {
 			cEditor.setShow();
+			render();
 		});
 
 		var showPoint = gui.add(cEditor, 'showPoint').name('Moving point at t');
 		showPoint.onChange(function() {
 			cEditor.setShow();
+			render();
 		});
 
 		var showCurf = gui.add(cEditor, 'showCurv').name('Curvature fence');
 		showCurf.onChange(function() {
-			cEditor.setShowCurf();
+			cEditor.setShow();
+			render();
 		});
 
 		var showFrame = gui.add(cEditor, 'showFrame').name('Frenet frame');
 		showFrame.onChange(function() {
 			cEditor.setShow();
+			render();
 		});
 
 		var showCirc = gui.add(cEditor, 'showCirc').name('Osculating circle');
 		showCirc.onChange(function() {
 			cEditor.setShow();
+			render();
 		});
 
 		var is3DParam = {
@@ -329,6 +330,7 @@ function showGUIElem(datguielement) {
 				camera = camera3D;
 				scene.add(directionalLight);
 				orbit = new THREE.OrbitControls(camera, renderer.domElement);
+				orbit.addEventListener( 'change', render );
 				scene.add(grid3D);
 			}
 			controlNet.reset(camera); 
@@ -341,11 +343,8 @@ function showGUIElem(datguielement) {
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);
 			controlNet.reset(camera); 
-			var knotDragger = new KnotDragger(curve, function() {
-				cEditor.update();
-				bsCurves.update();
-				cEditor.updateCurvePoint();
-			});
+			resetDragger();
+			render();
 		}};
 
 		elevateDegree = gui.add(evelateDegreeFun,'preform').name('Degree elevation');
@@ -356,11 +355,8 @@ function showGUIElem(datguielement) {
 			cEditor.update(); 
 			controlNet.reset(camera); 
 			bsCurves.resetGeometry(curve);
-			var knotDragger = new KnotDragger(curve, function() {
-				cEditor.update();
-				bsCurves.update();
-				cEditor.updateCurvePoint();
-			});
+			resetDragger();
+			render();
 		}};
 
 
@@ -575,11 +571,7 @@ function showGUIElem(datguielement) {
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);
 			controlNet.reset(camera); 
-			var knotDragger = new KnotDragger(curve, function() {
-				cEditor.update();
-				bsCurves.update();
-				cEditor.updateCurvePoint();
-			});
+			resetDragger();
 	    } else if(type_ === "Bézier" && p_ !== 'undefined') {
 	    	
 	    	curve.P = CP_;
@@ -590,11 +582,7 @@ function showGUIElem(datguielement) {
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);
 			controlNet.reset(camera); 
-			var knotDragger = new KnotDragger(curve, function() {
-				cEditor.update();
-				bsCurves.update();
-				cEditor.updateCurvePoint();
-			});
+			resetDragger();
 	    } else if(type_ === "P-curve" && d_ !== 'undefined') {
 	    	
 	    	typeChange.setValue(type_);
@@ -611,19 +599,16 @@ function showGUIElem(datguielement) {
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);
 			controlNet.reset(camera); 
-			var knotDragger = new KnotDragger(curve, function() {
-				cEditor.update();
-				bsCurves.update();
-				cEditor.updateCurvePoint();
-			});
+			resetDragger();
 	    } else {
 	    	console.warn("Load faliure");
 	    }
+	    render();
 	}
 
 
 	function render() {
-		requestAnimationFrame(render);
+		//requestAnimationFrame(render);
 		controlNet.render();
 		renderer.render(scene, camera);
 		knotRenderer.render(knotScene, knotCamera);
@@ -633,6 +618,7 @@ function showGUIElem(datguielement) {
 	function onDocumentMouseDown(event) {
 		event.preventDefault();
 		controlNet.onMouseDown(event);
+		render();
 	}
 
 	function onWindowResize() {

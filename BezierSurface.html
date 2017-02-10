@@ -19,7 +19,7 @@
     <body>
 		<div id="container"></div>
         <script src="js/three.min.js"></script>
-        		<script src="js/JSCAGD/NumDer.js"></script>
+        <script src="js/JSCAGD/NumDer.js"></script>
 		<script src="js/OrbitControls.js"></script>
 		<script src="js/bezier.js"></script>
 		<script src="js/TransformControls.js"></script>
@@ -114,9 +114,9 @@
 				
 				// Materials
 
-				
-				material = new THREE.MeshPhongMaterial( { color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, metalness: 10.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
-				pointmaterial = new THREE.MeshLambertMaterial( { color: 0xAA0000, shading: THREE.SmoothShading } ) ;
+				var texture = THREE.ImageUtils.loadTexture('highgrid.jpg');
+				material = new THREE.MeshPhongMaterial( { map: texture, color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, metalness: 10.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
+				pointmaterial = new THREE.MeshLambertMaterial( { color: 0x880000, shading: THREE.SmoothShading } ) ;
 				movingpointmaterial = new THREE.MeshLambertMaterial( { color: 0x2e9800, shading: THREE.SmoothShading } ) ;
 				dashedmaterial = new THREE.LineBasicMaterial({
 					color: 0xAA0000,
@@ -308,7 +308,7 @@
 					controlPolygons[n + 1 + l] = new THREE.Geometry();
 					controlPolygons[n + 1 + l].vertices = P_rev[l];
 					controlPolygons[n + 1 + l].computeLineDistances();
-					controlPolygonPaths[n + 1 + l].geometry = controlPolygons[n + l];	
+					controlPolygonPaths[n + 1 + l].geometry = controlPolygons[n + 1 + l];	
 				}		
 			}
 			
@@ -328,9 +328,10 @@
 						var tangentV =  TangentVOnBezierSurface(P, n, m, parameters.u, parameters.v);
 						this.vArrow.position.copy(pos);
 						this.vArrow.setDirection(tangentV);
-						var vectorx = new THREE.Vector3();
-						vectorx.crossVectors(tangentU, tangentV);
+						var vectorx = tangentU.clone();
+						vectorx.cross(tangentV);
 						vectorx.multiplyScalar(-1);
+						vectorx.normalize();
 						this.nArrow.position.copy(pos);
 						this.nArrow.setDirection(vectorx);
 					}

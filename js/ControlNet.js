@@ -20,7 +20,9 @@ var controlNetParameters = {
 			//gapSize: 20
 		}),
 
-		pointRadius: 12
+		pointRadius: 12,
+
+		sphereresolution: 10
 };
 
 var ControlNet = function(geometry, camera, renderer, onChange) {
@@ -68,7 +70,7 @@ var ControlNet = function(geometry, camera, renderer, onChange) {
 	if (geometry.controlNetType === 'curve') {
 		this.controlPolygon = new THREE.Geometry();
 		this.controlPolygon.vertices = this.geometry.P;
-		this.controlPolygon.computeLineDistances();
+		//this.controlPolygon.computeLineDistances();
 		this.controlPolygonPath = new THREE.Line(this.controlPolygon, controlNetParameters.dashedmaterial);
 		this.controlPolygon.dynamic = true;
 		this.controlPolygonPath.dynamic = true;
@@ -78,7 +80,7 @@ var ControlNet = function(geometry, camera, renderer, onChange) {
 	this.cptContainer = new THREE.Object3D();
 	// Control points
 	for (i = 0; i <= this.geometry.n; i++) {
-		spgeometry = new THREE.SphereGeometry(controlNetParameters.pointRadius, 32, 32);
+		spgeometry = new THREE.SphereGeometry(controlNetParameters.pointRadius, controlNetParameters.sphereresolution, controlNetParameters.sphereresolution);
 		sphere = new THREE.Mesh(spgeometry, controlNetParameters.pointmaterial);
 		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
 		this.controlPoints.push(sphere);
@@ -96,9 +98,9 @@ ControlNet.prototype.update = function() {
 	for (i = 0; i <= this.geometry.n; i++) {
 		this.geometry.P[i] = this.controlPoints[i].position;
 	}
-	this.controlPolygon.computeLineDistances();
+	//this.controlPolygon.computeLineDistances();
 	this.controlPolygon.verticesNeedUpdate = true;
-	this.controlPolygon.lineDistancesNeedUpdate = true;
+	//this.controlPolygon.lineDistancesNeedUpdate = true;
 
 };
 
@@ -129,8 +131,16 @@ ControlNet.prototype.onMouseDown = function(event) {
 
 ControlNet.prototype.reset = function(newcamera) {
 	this.camera = newcamera;
-	for( var i = this.children.length - 1; i >= 0; i--) { var obj = this.children[i];
-     this.remove(obj); }
+	for( var i = this.controlPoints.length - 1; i >= 0; i--) { 
+		var obj = this.controlPoints[i];
+        obj.geometry.dispose(); 
+        //obj.dispose(); 
+ 	}
+	for( var i = this.children.length - 1; i >= 0; i--) { 
+		var obj = this.children[i];
+        this.remove(obj);
+        //obj.dispose(); 
+ 	}
 	// Control polygon for curves
 	if (this.geometry.controlNetType === 'curve') {
 		this.controlPolygon = new THREE.Geometry();
@@ -147,7 +157,7 @@ ControlNet.prototype.reset = function(newcamera) {
 	// Control points
 	this.cptContainer = new THREE.Object3D();
 	for (i = 0; i <= this.geometry.n; i++) {
-		var spgeometry = new THREE.SphereGeometry(controlNetParameters.pointRadius, 32, 32);
+		var spgeometry = new THREE.SphereGeometry(controlNetParameters.pointRadius, controlNetParameters.sphereresolution, controlNetParameters.sphereresolution);
 		var sphere = new THREE.Mesh(spgeometry, controlNetParameters.pointmaterial);
 		sphere.position.set(this.geometry.P[i].x, this.geometry.P[i].y, this.geometry.P[i].z);
 		this.controlPoints.push(sphere);
@@ -157,13 +167,15 @@ ControlNet.prototype.reset = function(newcamera) {
 
 	var	that = this;
 	if(is3D) {
+		this.control3D.dispose();
 		this.control3D = new THREE.TransformControls(this.camera, this.renderer.domElement);
 		this.control3D.size = 0.5;
-		this.control.dispose();
+		//this.control.dispose();
 		this.control = this.control3D;
 	} else {
+		this.control2D.dispose();
 		this.control2D = new THREE.DragControls( this.controlPoints, this.camera, this.renderer.domElement );
-		this.control.dispose();
+		//this.control.dispose();
 		this.control = this.control2D;
 	}
 	this.control.addEventListener('change', function() {

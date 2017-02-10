@@ -70,7 +70,7 @@ var CurveEditor = function(curve) {
 		this.curve, //path
 		curveParameters.curveResolution, //segments
 		curveParameters.tuberadius, //radius
-		8, //radiusSegments
+		4, //radiusSegments
 		false //closed
 	);
 
@@ -94,7 +94,7 @@ var CurveEditor = function(curve) {
 
 
 	var pos = this.curve.getPoint(this.t);
-	var mvPointGeometry = new THREE.SphereGeometry(10, 32, 32);
+	var mvPointGeometry = new THREE.SphereGeometry(10, 10, 10);
 	this.curvePoint = new THREE.Mesh(mvPointGeometry, curveParameters.movingpointmaterial);
 	this.curvePoint.position.set(pos.x, pos.y, pos.z);
 
@@ -183,11 +183,12 @@ CurveEditor.prototype.constructor = CurveEditor;
 
 CurveEditor.prototype.update = function() {
 	this.curve.needsUpdate = true;
+	this.tube.dispose();
 	this.tube = new THREE.TubeGeometry(
 		this.curve, //path
 		curveParameters.curveResolution, //segments
 		curveParameters.tuberadius, //radius
-		8, //radiusSegments
+		4, //radiusSegments
 		false //closed
 	);
 
@@ -196,38 +197,38 @@ CurveEditor.prototype.update = function() {
 	this.tubeMesh.geometry = this.tube;
 	this.tubeMesh.geometry.verticesNeedUpdate = true;
 	this.tubeMesh.verticesNeedUpdate = true;
+	if (this.showCurv) {
+		var ti = 0;
+		var diff =1/curveParameters.fenceResolution;
+		for (var i = 0; i < curveParameters.fenceResolution-1; i++) {
+			ti += diff;
+			var tan = this.curve.getTangent(ti);
+			var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
+			var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+			if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
+				normal = this.curve.getNormalBS(ti);
+				curvature = -Math.abs(curvature);
+			}
 
-	var ti = 0;
-	var diff =1/curveParameters.fenceResolution;
-	for (var i = 0; i < curveParameters.fenceResolution-1; i++) {
-		ti += diff;
-		var tan = this.curve.getTangent(ti);
-		var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
-		var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
-		if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
-			normal = this.curve.getNormalBS(ti);
-			curvature = -Math.abs(curvature);
+			var curvepoint = this.curve.getPoint(ti);
+			var fencepoint = curvepoint.clone();
+			
+			fencepoint.add(new THREE.Vector3(curvature*100*normal.x, curvature*100*normal.y, curvature*100*normal.z));
+
+			
+			var line = this.fenceLines[i];
+			var positions = line.geometry.attributes.position.array;
+			positions[0] = curvepoint.x;
+			positions[1] = curvepoint.y;
+			positions[2] = curvepoint.z;
+
+			positions[3] = fencepoint.x;
+			positions[4] = fencepoint.y;
+			positions[5] = fencepoint.z;
+			line.geometry.attributes.position.needsUpdate = true; 
+			
 		}
-
-		var curvepoint = this.curve.getPoint(ti);
-		var fencepoint = curvepoint.clone();
-		
-		fencepoint.add(new THREE.Vector3(curvature*100*normal.x, curvature*100*normal.y, curvature*100*normal.z));
-
-		
-		var line = this.fenceLines[i];
-		var positions = line.geometry.attributes.position.array;
-		positions[0] = curvepoint.x;
-		positions[1] = curvepoint.y;
-		positions[2] = curvepoint.z;
-
-		positions[3] = fencepoint.x;
-		positions[4] = fencepoint.y;
-		positions[5] = fencepoint.z;
-		line.geometry.attributes.position.needsUpdate = true; 
-		
 	}
-
 };
 
 CurveEditor.prototype.updateCurvePoint = function() {
@@ -328,16 +329,15 @@ CurveEditor.prototype.setShow = function() {
 	} else {
 		this.remove(this.knotPoints);
 	}
-};
-
-CurveEditor.prototype.setShowCurf = function() {
-	
 	if (this.showCurv) {
 		this.add(this.curvatureFence);
 	} else {
 		this.remove(this.curvatureFence);
 	}
+	this.update();
+	this.updateCurvePoint();
 };
+
 
 CurveEditor.prototype.reset = function() {
 	this.remove(this.knotPoints);
@@ -357,7 +357,7 @@ CurveEditor.prototype.reset = function() {
 	for (i = this.knotlist.length - 1; i >= 0; i--) {
 		var ti = this.knotlist[i];
 		var pos = this.curve.getPoint(ti);
-		var geometry = new THREE.SphereGeometry(6, 32, 32);
+		var geometry = new THREE.SphereGeometry(6, 10, 10);
 		var pt = new THREE.Mesh(geometry, curveParameters.knotpointmaterial);
 		pt.position.set(pos.x, pos.y, pos.z);
 		this.knotPoints.add(pt);
