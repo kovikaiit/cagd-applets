@@ -434,6 +434,7 @@ function showGUIElem(datguielement) {
 		var radius = optionsGui.add(controlNetParameters,'pointRadius').min(1).max(20).step(1).name("CP Radius");
 		radius.onChange(function() {
 			controlNet.reset(camera); 
+			render();
 		});
 		var data = {
 		"backgroundColor" : "#f0f0f0",
@@ -448,16 +449,19 @@ function showGUIElem(datguielement) {
 		var background = optionsGui.addColor(data, 'backgroundColor').onChange( function ( value ) {
 			colorConvert( value );
 			renderer.setClearColor( color.getHex() );
+			render();
 		} );
 		var curveColor = optionsGui.addColor(data, 'curvecolor').name("Curve color");
 		curveColor.onChange( handleColorChange( curveParameters.material.color ) );
 		var radius = optionsGui.add(curveParameters,'tuberadius').min(0.1).max(5).step(0.1).name("Curve thickness");
 		radius.onChange(function() {
 			cEditor.update();
+			render();
 		});
 		var resolution = optionsGui.add(curveParameters,'curveResolution').min(10).max(1000).step(1).name("Curve resolution");
 		resolution.onChange(function() {
 			cEditor.update();
+			render();
 		});
 		//var fenceresolution = optionsGui.add(curveParameters,'fenceResolution').min(10).max(1000).step(1).name("Curve resolution");
 		//fenceresolution.onChange(function() {

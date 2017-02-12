@@ -57,6 +57,40 @@ JSCAGD.BernsteinBase.evalAll = function(n, u) {
 };
 
 /**
+ * All degree n i-th Bernstein base function at u
+ * @param {Number} n - The degree of the basis functions
+ * @param {List} n - The weights
+ * @param {Number} u - The parameter value
+ */
+JSCAGD.BernsteinBase.evalAllRational = function(n, W, u) {
+	var B = [];
+	var k, j;
+	var u1 = 1.0 - u;
+	var total = 0;
+	for (k = 0; k <= n; k++) {
+		B.push(0.0);
+	}
+	B[0] = 1.0;
+	for (j = 1; j <= n; j++) {
+		var saved = 0.0;
+		for (k = 0; k < j; k++) {
+			var temp = B[k];
+			B[k] = saved + u1 * temp;
+			saved = u * temp;
+		}
+		B[j] = saved;
+	}
+	for (j = 1; j <= n; j++) {
+		B[j] *= W[j];
+		total += B[j];
+	}
+	for (j = 1; j <= n; j++) {
+		B[j] /= total;
+	}
+	return B;
+};
+
+/**
  * Container for static knot vector functions
  * @namespace
  */
