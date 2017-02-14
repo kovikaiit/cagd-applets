@@ -208,8 +208,11 @@ function showGUIElem(datguielement) {
 		gui = new dat.GUI({ width: 512, resizable : false });
 		params = {
 			p: 3,
-			curv: 0
+			curv: 0,
+			w: 1,
+			w2: 1
 		};
+		//, 'ratBezier', 'meang1test'
 		typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
 
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
@@ -220,6 +223,7 @@ function showGUIElem(datguielement) {
 				hideGUIElem(parameterD);
 				hideGUIElem(insertKnot);
 				showGUIElem(elevateDegree);
+				showGUIElem(reduceDegree);
 				curve.setDegree(curve.n);
 				resetDragger();
 			} else if(curve.curvetype === 'B-spline') {
@@ -228,12 +232,14 @@ function showGUIElem(datguielement) {
 				hideGUIElem(insertKnot);
 				curve.setDegree(params.p);
 				resetDragger();
-				
+				hideGUIElem(elevateDegree);
+				hideGUIElem(reduceDegree);
 			} else {
 				showGUIElem(parameterD);
 				showGUIElem(insertKnot);
 				hideGUIElem(curveDegree);
 				hideGUIElem(elevateDegree);
+				hideGUIElem(reduceDegree);
 				resetDragger();
 				bsCurves.resetGeometry(curve);
 			}
@@ -252,8 +258,30 @@ function showGUIElem(datguielement) {
 			bsCurves.update();
 			render();
 		});
-		//parameterD.domElement.parentNode.parentNode.style.display = 'block';
 
+
+		var parameterW = gui.add( params, 'w' ).min(0).max(30).step(0.01).name('w_0 = w_n');
+		parameterW.onChange(function(value) {
+			curve.W[0] = params.w;
+			curve.W[curve.n] = params.w;
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.update();
+			render();
+		});
+
+		var parameterW2 = gui.add( params, 'w2' ).min(0).max(30).step(0.01).name('w_1 = w_n-1');
+		parameterW2.onChange(function(value) {
+			curve.W[1] = params.w2;
+			curve.W[curve.n-1] = params.w2;
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.update();
+			render();
+		});
+		//parameterD.domElement.parentNode.parentNode.style.display = 'block';
+		hideGUIElem(parameterW);
+		hideGUIElem(parameterW2);
 
 		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
@@ -348,7 +376,23 @@ function showGUIElem(datguielement) {
 		}};
 
 		elevateDegree = gui.add(evelateDegreeFun,'preform').name('Degree elevation');
-		//hideGUIElem(elevateDegree);
+		hideGUIElem(elevateDegree);
+
+
+		
+		var reduceDegreeFun = { preform:function(){ 
+			curve.reduceDegree();
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			resetDragger();
+			render();
+		}};
+
+		var reduceDegree = gui.add(reduceDegreeFun,'preform').name('Degree reduction');
+		hideGUIElem(reduceDegree);
+
 
 		var insertKnotFun = { add:function(){ 
 			curve.insertKnot(cEditor.t); 

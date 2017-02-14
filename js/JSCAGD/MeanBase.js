@@ -8,6 +8,22 @@ var JSCAGD = JSCAGD || {};
  */
 JSCAGD.MeanBase = {};
 
+var getSide = function(u, n) {
+	var i;
+	var basis = [];
+	for (i = 0; i < n; i++) {
+		basis[i] = 0;
+	}
+	if (u === 0) {
+		basis[0] = 1;
+		return basis;
+	} else {
+		basis[n - 1] = 1;
+		return basis;
+	}
+	return basis;
+};
+
 JSCAGD.MeanBase.evalAll = function(n, u, d) {
 	var topPoints = [];
 	var i;
@@ -144,21 +160,7 @@ JSCAGD.MeanBase.evalAllGeneralCorner2 = function(u, knot, d) {
 };
 
 
-var getSide = function(u, n) {
-	var i;
-	var basis = [];
-	for (i = 0; i < n; i++) {
-		basis[i] = 0;
-	}
-	if (u === 0) {
-		basis[0] = 1;
-		return basis;
-	} else {
-		basis[n - 1] = 1;
-		return basis;
-	}
-	return basis;
-};
+
 
 JSCAGD.MeanBase.evalAllGeneralCorner3 = function(u, knot, d) {
 	var n = knot.length;
@@ -208,9 +210,9 @@ JSCAGD.MeanBase.evalAllGeneralCorner4 = function(t, knot, d) {
 			b[i] = 1 / (knot[i + 1] - knot[i]);
 		}
 	}
-	basis[0] = (r[1] + (knot[1] - t)) / b[0] / (t * t);
+	basis[0] = (r[1] + (knot[1] - t)) / b[0] / (t * t) ;
 	total += basis[0];
-	basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) / b[0] + r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1];
+	basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) / b[0]+ r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1];
 	total += basis[1];
 	for (i = 2; i < n - 2; i++) {
 		basis[i] = (r[i - 1] * b[i - 1] + r[i + 1] * b[i] - (b[i - 1] + b[i]) * r[i]);
@@ -242,24 +244,34 @@ JSCAGD.MeanBase.evalAllGeneralCorner5 = function(t, knot, d) {
 			b[i] = 1 / (knot[i + 1] - knot[i]);
 		}
 	}
-	basis[0] = r[1] *b[0]-r[0]*b[0]+  r[0] / t+(r[1] + (knot[1] - t)) * b[0] / (t * t) /100;
-	var f0 = d*(1 - t/r[0] )/(t*t)/100;
-	var f1 = t *f0;
-	var fn = (1 - (1-t) / r[n-1])/((1-t)*(1-t))/d/10;
-	//basis[0] = r[1] *b[0]-r[0]*b[0]+  r[0] / t + f0 - b[0]*f1;
+	//basis[0] = r[1] *b[0]-r[0]*b[0]+  r[0] / t+(r[1] + (knot[1] - t)) * b[0] / (t * t) /100;
+	//var f0 = r[0]*r[0]/(t*t);
+	//var f0 = (r[0] - t)/(t*t)/n;
+	var f0 = (r[1] + (knot[1] - t)) / (t * t) / (n-1);
+	//var f0 = r[0]*(1 - t/r[0] )/(t*t)/10;
+	var f1 = (1 / t + (knot[1] - t) / (t * r[1]))/ (n-1);
+	//var fn = d*(1 - (1-t) / r[n-1])/((1-t)*(1-t))/100;
+	var fn = (1+d)*(1 - (1-t) / r[n-1])/((1-t)*(1-t))/10;
+
+	basis[0] = r[1] *b[0]-r[0]*b[0] +r[0]/t + f0;//+  r[0] / t /2;
 	total += basis[0];
-	//basis[1] = b[0]*f1 + r[2] * b[1] - r[1] * (b[1]+b[0]) +r[0]*b[0];
-	basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) * b[0] /100 + r[2] * b[1] - r[1] * (b[1]+b[0]) +r[0]*b[0];// - (knot[1] - t) / r[1];
+	basis[1] = r[2] * b[1] - r[1] * (b[1]+b[0]) +r[0]*b[0] +f1;
+	//basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) * b[0] /100 + r[2] * b[1] - r[1] * (b[1]+b[0]) +r[0]*b[0];// - (knot[1] - t) / r[1];
 	total += basis[1];
+
+	//basis[0] = (r[1] + (knot[1] - t)) /(n-1) / (t * t) ;
+	//total += basis[0];
+	//basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) / (n-1) + r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1];
+	//total += basis[1];
 	for (i = 2; i < n - 2; i++) {
 		basis[i] = (r[i - 1] * b[i - 1] + r[i + 1] * b[i] - (b[i - 1] + b[i]) * r[i]);
 		total += basis[i];
 	}
-	basis[n - 2] = b[n-2]*(1-t)*fn;
+	basis[n - 2] = b[n-2]*(1-t)*fn/(1+d);
 	basis[n - 2] += r[n - 3] * b[n - 3] - r[n - 2] * (b[n - 3]+b[n-2]) +r[n-1]* b[n - 2]; 
 	total += basis[n - 2];
 	basis[n - 1] = (r[n - 2] * b[n - 2] - r[n - 1] * b[n - 2]) + r[n - 1] / (1 - t);
-	basis[n - 1] += fn - b[n-2]*(1-t)*fn;
+	basis[n - 1] += fn - b[n-2]*(1-t)*fn/(1+d);
 	total += basis[n - 1];
 	for (i = 0; i < n; i++) {
 		basis[i] /= total;
@@ -380,6 +392,14 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 		this.d = typeof d !== 'undefined' ? d : 1 / (n + 1);
 		this.p = 3;
 		this.U = JSCAGD.KnotVector.createUniform(this.n, this.p);
+		this.W = [];
+		for (var i = 0; i <= this.n; i++) {
+			this.W.push(1);
+		}
+		//this.W[0] = 0.01;
+		this.W[this.n] = this.W[0];
+		//this.W[1] = 0.1;
+		this.W[this.n-1] = this.W[1];
 		var i;
 
 		this.P = P;
@@ -409,7 +429,10 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 		}	else if (this.curvetype === 'B-spline' || this.curvetype === 'Bézier') {
 			var span = JSCAGD.KnotVector.findSpan(this.U, this.n, this.p, u);
 			N = JSCAGD.BsplineBase.evalNonWanish(this.U, this.n, this.p, u, span);
-		}	
+		} else if (this.curvetype === 'ratBezier') {
+			
+			N = JSCAGD.BernsteinBase.evalAllRational(this.n, this.W, u);
+		}
 		
 		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.n+1, this.d);
 		var C = new JSCAGD.Vector3(0.0, 0.0, 0.0);
@@ -462,6 +485,21 @@ JSCAGD.MeanCurve.prototype.findSpan = function(t) {
 };
 
 
+JSCAGD.MeanCurve.prototype.PointOnPSurface = function(PTS, u, v) {
+	Bu = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.knot, this.d);
+	Bv = JSCAGD.MeanBase.evalAllGeneralCorner4(v, this.knot, this.d);
+	var C = new THREE.Vector3(0.0, 0.0, 0.0);
+	for (k = 0; k <= n; k++) 
+	{
+		for (l = 0; l <= m; l++) 
+		{
+			C.addScaledVector(PTS[k][l], Bu[k]*Bv[l]);
+		}
+	}
+	return C;
+};
+
+
 JSCAGD.MeanCurve.prototype.setU = function(U) {
 	this.U = U;
 };
@@ -485,9 +523,38 @@ JSCAGD.MeanCurve.prototype.elevateDegree = function() {
 	this.setDegree(this.p + 1);
 	this.P = Q;
 	this.knot = [];
-		for (i = 0; i < this.n + 1; i++) {
-			this.knot.push(i / this.n);
-		}
+	for (i = 0; i < this.n + 1; i++) {
+		this.knot.push(i / this.n);
+	}
+};
+
+JSCAGD.MeanCurve.prototype.reduceDegree = function() {
+	var Q = [];
+	var nui;
+	var i;
+	Q[0] = this.P[0].clone();
+	Q[this.n-1] = this.P[this.n].clone();
+	for (i = 1; i <= (this.n-1)/2; i++) {
+		nui = i / this.n;
+		Q[i] = this.P[i].clone();
+		Q[i].addScaledVector(Q[i-1], -nui);
+		Q[i].multiplyScalar(1/(1-nui));
+	}
+	for (i = this.n - 1; i >= this.n/2; i--) {
+		console.log("xx")
+		nui = i / this.n;
+		Q[i-1] = this.P[i].clone();
+		Q[i-1].addScaledVector(Q[i], -(1-nui));
+		Q[i-1].multiplyScalar(1/nui);
+	}
+	this.n -= 1;
+	this.setDegree(this.p - 1);
+	
+	this.P = Q;
+	this.knot = [];
+	for (i = 0; i < this.n + 1; i++) {
+		this.knot.push(i / this.n);
+	}
 };
 
 

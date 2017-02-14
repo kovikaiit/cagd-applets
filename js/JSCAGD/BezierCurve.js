@@ -26,3 +26,49 @@ JSCAGD.BezierCurve = JSCAGD.ParametricCurve.create(
 		return C;
 	}
 );
+
+/**
+ * Degree elevation
+ */
+JSCAGD.BezierCurve.prototype.elevateDegree = function() {
+	var Q = [];
+	Q[0] = this.P[0].clone();
+	for (var i = 1; i <= this.n; i++) {
+		Q[i] = this.P[i-1].clone();
+		Q[i].multiplyScalar(i/(this.n+1))
+		Q[i].addScaledVector(this.P[i], 1 - i/(this.n+1));
+	}
+	Q[this.n+1] = this.P[this.n].clone();
+	this.n += 1;
+	this.P = Q;
+};
+
+
+/**
+ * Degree reduction
+ */
+JSCAGD.BezierCurve.prototype.reduceDegree = function() {
+	var Q = [];
+	var nui;
+	Q[0] = this.P[0].clone();
+	var k = this.n/2;
+	for (var i = 1; i <= (this.n-1)/2; i++) {
+		nui = i / this.n;
+		Q[i] = this.P[i-1].clone();
+		Q[i].addScaledVector(Q[i-1], -nui);
+		Q[i].multiplyScalar(1/(1-nui));
+	}
+	for (var i = this.n - 1; i >= this.n/2; i++) {
+		nui = i / this.n;
+		Q[i] = this.P[i-1].clone();
+		Q[i].addScaledVector(Q[i+1], -(1-nui));
+		Q[i].multiplyScalar(1/nui);
+	}
+
+	Q[this.n-1] = this.P[this.n].clone();
+	this.n -= 1;
+	this.P = Q;
+};
+
+
+

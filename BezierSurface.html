@@ -12,19 +12,21 @@
 			margin: 0px;
 			overflow: hidden;
 		}
+
 	</style>
 	<script src="js/dat.gui.min.js"></script>
         <link rel="stylesheet" type="text/css" href="style.css">
     </head>
     <body>
 		<div id="container"></div>
+		        <script src="js/FileSaver.min.js"></script>
         <script src="js/three.min.js"></script>
         <script src="js/JSCAGD/NumDer.js"></script>
 		<script src="js/OrbitControls.js"></script>
 		<script src="js/bezier.js"></script>
 		<script src="js/TransformControls.js"></script>
-		
-
+		<script src="js/exporters/STLExporter.js"></script>
+		<script src="js/exporters/OBJExporter.js"></script>
 		<script>
 			var container;
 			var scene, camera, renderer;
@@ -113,6 +115,12 @@
 				//orbit.enableZoom = false;
 				
 				// Materials
+				//var isotexture = new THREE.ImageUtils.loadTexture( "isophotes.png" );
+				//isotexture.wrapS = THREE.RepeatWrapping;
+				//isotexture.wrapT = THREE.RepeatWrapping;
+				//isotexture.repeat.set( 4, 4 );
+
+				//material = new THREE.MeshBasicMaterial( {envMap: isotexture, reflectivity: 100.0, side: THREE.DoubleSide, color: 0xffffff, shading:THREE.SmoothShading} );
 
 				var texture = THREE.ImageUtils.loadTexture('highgrid.jpg');
 				material = new THREE.MeshPhongMaterial( { map: texture, color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, metalness: 10.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
@@ -178,11 +186,29 @@
 			
 			function initGui() {
 				gui = new dat.GUI();
-	
+
+
+
 				parameters = 
 				{
 					u: 0.5, // numeric slider
-					v: 0.5 
+					v: 0.5,
+					exportToSTL: function () {
+
+						var exporter = new THREE.STLExporter();
+						var result = exporter.parse( surfaceMesh );
+						var blob = new Blob([result], {type: "text/plain;charset=ascii"});
+						saveAs(blob, "surface.stl");
+
+					},
+					exportToOBJ: function () {
+
+						var exporter = new THREE.OBJExporter();
+						var result = exporter.parse( surfaceMesh );
+						var blob = new Blob([result], {type: "text/plain;charset=utf-8"});
+						saveAs(blob, "surface.obj");
+
+					}
 				};
 				// gui.add( parameters )
 				
@@ -196,6 +222,12 @@
 				});
 				var opacity = gui.add( material, 'opacity' ).min(0).max(1).step(0.01).name('Opacity');
 				
+
+				
+				gui.add(parameters, 'exportToOBJ').name("Export OBJ");
+				gui.add(parameters, 'exportToSTL').name("Export STL");
+				
+
 				gui.open();
 			}
 			
@@ -203,12 +235,11 @@
 				var x = PointOnBezierSurface(P, n, 0.5, 0.5);
 				bezierGeometry = new THREE.ParametricGeometry(function ( u, v ) { 
 					return PointOnBezierSurface(P, n, m, u, v);
-    			}, 20, 20 );
+    			}, 200, 200 );
 
 				controlPolygonPaths = new Array();
 				controlPolygons = new Array();
-				for (k = 0; k <= n; k++) 
-				{
+				for (k = 0; k <= n; k++) {
 					controlPolygons.push(new THREE.Geometry());
 					controlPolygons[k].vertices = P[k];
 					controlPolygons[k].computeLineDistances();
@@ -284,7 +315,7 @@
 				}
 				bezierGeometry = new THREE.ParametricGeometry(function ( u, v ) { 
 					return PointOnBezierSurface(P, n, m, u, v);
-    			}, 20, 20 );
+    			}, 200, 200 );
 
 				
 				

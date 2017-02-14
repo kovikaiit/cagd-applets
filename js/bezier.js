@@ -121,6 +121,23 @@ function PointOnBezierSurface(P, n, m, u, v)
 	return C;
 }
 
+
+
+function PointOnPSurface(P, n, m, u, v)
+{ 
+	var Bu = AllBernstein(n, u);
+	var Bv = AllBernstein(m, v);
+	var C = new THREE.Vector3(0.0, 0.0, 0.0);
+	for (k = 0; k <= n; k++) 
+	{
+		for (l = 0; l <= m; l++) 
+		{
+			C.addScaledVector(P[k][l], Bu[k]*Bv[l]);
+		}
+	}
+	return C;
+}
+
 function TangentUOnBezierSurface(P, n, m, u, v)
 { 
 	var UCurve = function(u_) {

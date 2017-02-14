@@ -44,7 +44,7 @@ var KnotDragger = function(geometry, onChange) {
 	var U ;
 	if(geometry.curvetype === 'B-spline'){
 		U = geometry.U;
-	} else if (geometry.curvetype === 'P-curve') {
+	} else if (geometry.curvetype === 'P-curve' || geometry.curvetype === 'meang1test') {
 		U = geometry.knot;
 	}
 
@@ -60,7 +60,7 @@ var KnotDragger = function(geometry, onChange) {
 	var upper;
 	if(geometry.curvetype === 'B-spline'){
 		upper = n-p;
-	} else if (geometry.curvetype === 'P-curve') {
+	} else if (geometry.curvetype === 'P-curve' || geometry.curvetype === 'meang1test') {
 		upper = n+1;
 	}
 	for (var i = 0; i < upper; i++) {
@@ -72,7 +72,7 @@ var KnotDragger = function(geometry, onChange) {
 		if(geometry.curvetype === 'B-spline') {
 			dragger.style.left = U[p + i + 1] * x_diff - size / 2 + 'px';
 			dragger.knotIndex = p + i + 1;
-		} else  if (geometry.curvetype === 'P-curve') {
+		} else  if (geometry.curvetype === 'P-curve' || geometry.curvetype === 'meang1test') {
 			dragger.style.left = U[i] * x_diff - size / 2 + 'px';
 			dragger.knotIndex = i;
 		}

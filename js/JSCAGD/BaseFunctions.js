@@ -80,11 +80,11 @@ JSCAGD.BernsteinBase.evalAllRational = function(n, W, u) {
 		}
 		B[j] = saved;
 	}
-	for (j = 1; j <= n; j++) {
+	for (j = 0; j <= n; j++) {
 		B[j] *= W[j];
 		total += B[j];
 	}
-	for (j = 1; j <= n; j++) {
+	for (j = 0; j <= n; j++) {
 		B[j] /= total;
 	}
 	return B;

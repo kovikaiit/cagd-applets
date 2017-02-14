@@ -37,7 +37,10 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 		}	else if (this.c_geom.curvetype === 'B-spline' || this.c_geom.curvetype === 'Bézier') {
 			span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
 			N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
-		}	
+		}	else if (this.c_geom.curvetype === 'ratBezier') {
+
+			N = JSCAGD.BernsteinBase.evalAllRational(this.c_geom.n, this.c_geom.W, u);
+		}
 		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
 		//var N = JSCAGD.BsplineBase.evalNonWanishDer(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 
