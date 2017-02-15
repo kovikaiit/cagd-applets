@@ -139,12 +139,14 @@ function showGUIElem(datguielement) {
 
 	function initKnotEditor() {
 		var width = 500;
-		var height = 300;
+		var height = 301;
 		// Scene and camera
 		knotScene = new THREE.Scene();
 		knotCamera = new THREE.OrthographicCamera( -width/2, width/2, height/2, -height/2, 10, 10000 );
 		knotCamera.position.set(-2000, 0, 0);
 		knotCamera.lookAt(new THREE.Vector3());
+		var ambientLight = new THREE.AmbientLight(0xffffff);
+		knotScene.add(ambientLight);
 
 
 		// Renderer
@@ -287,27 +289,6 @@ function showGUIElem(datguielement) {
 		hideGUIElem(parameterW);
 		hideGUIElem(parameterW2);
 
-		var evelateDegreeFun = { preform:function(){ 
-			curve.elevateDegree();
-			cEditor.update();
-			cEditor.updateCurvePoint();
-			bsCurves.resetGeometry(curve);
-			controlNet.reset(camera); 
-			resetDragger();
-			render();
-		}};
-
-		
-		var reduceDegreeFun = { preform:function(){ 
-			curve.reduceDegree();
-			cEditor.update();
-			cEditor.updateCurvePoint();
-			bsCurves.resetGeometry(curve);
-			controlNet.reset(camera); 
-			resetDragger();
-			render();
-		}};
-
 
 		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
@@ -331,13 +312,20 @@ function showGUIElem(datguielement) {
 				var diff = params.n - curve.n;
 				if (diff > 0) {
 					for (var i = 0; i < diff; i++) {
-						evelateDegreeFun.preform();
+						curve.elevateDegree();
 					}
 				} else {
 					for (var i = 0; i < -diff; i++) {
-						reduceDegreeFun.preform();
+						curve.reduceDegree();
 					}
 				}
+				cEditor.reset();
+				cEditor.update();
+				cEditor.updateCurvePoint();
+				bsCurves.resetGeometry(curve);
+				controlNet.reset(camera); 
+				resetDragger();
+				render();
 			}
 		});
 		hideGUIElem(curveDegreeBezier);
@@ -469,9 +457,13 @@ function showGUIElem(datguielement) {
 				if(!knotclosed) {
 			    	customLi.style.height = 0 + 'px';
 			    	knotclosed = true;
+			    	bsCurves.active = false;
 				} else {
-					customLi.style.height = 320 + 'px';
+					customLi.style.height = 321 + 'px';
 					knotclosed = false;
+					bsCurves.active = true;
+					bsCurves.resetGeometry(curve);
+					render();
 				}
 			}
 		};
@@ -488,10 +480,10 @@ function showGUIElem(datguielement) {
 			if(gui.closed) {
 		    	customLi.style.height = 0 + 'px';
 			} else if(!knotclosed) {
-				customLi.style.height = 320 + 'px';	
+				customLi.style.height = 321 + 'px';	
 			}
 		 });
-		customLi.style.height = 320 + 'px';
+		customLi.style.height = 321 + 'px';
 	}
 
 	function initOptionsGui() {

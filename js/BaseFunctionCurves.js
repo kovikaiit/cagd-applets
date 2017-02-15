@@ -16,12 +16,6 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 	},
 
 	function(u) {
-		//u = typeof u !== 'undefined' ? u : 0.5;
-		//console.log(u);
-		//var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
-
-		//var N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
-
 		var N;
 		var span;
 		if(this.c_geom.curvetype === 'meang1test') {
@@ -41,58 +35,29 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 
 			N = JSCAGD.BernsteinBase.evalAllRational(this.c_geom.n, this.c_geom.W, u);
 		}
-		//var N = JSCAGD.MeanBase.evalAllCyclic2(u, this.c_geom.n+1, this.c_geom.d);
-		//var N = JSCAGD.BsplineBase.evalNonWanishDer(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 
-		//var N = JSCAGD.BernsteinBase.evalAll(this.c_geom.n, u);
 		if (this.c_geom.curvetype === 'B-spline' || this.c_geom.curvetype === 'Bézier') {
 			if (span - this.c_geom.p  <=  this.i && this.i <= span) {
-				return new JSCAGD.Vector3(0, this.height * N[this.i - span + this.c_geom.p] - this.height/2, this.width * u - this.width/2);
+				return new JSCAGD.Vector3(this.i*10, this.height * N[this.i - span + this.c_geom.p] - this.height/2 +1, this.width * u - this.width/2);
 			} else {
-				return new JSCAGD.Vector3(0, - this.height/2, this.width * u - this.width/2);
+				return new JSCAGD.Vector3(this.i*10, - this.height/2 +1, this.width * u - this.width/2);
 			}
 		} else {
-			return new JSCAGD.Vector3(0, this.height * N[this.i] - this.height/2, this.width * u - this.width/2);
+			return new JSCAGD.Vector3(this.i*10, this.height * N[this.i] - this.height/2 +1, this.width * u - this.width/2);
 		}
-		
-	
+
 	}
 );
-
-
-
 
 var BaseFunctionCurves = function(geometry, width, height) {
 	THREE.Object3D.call(this);
 
 	this.width = width;
 	this.height = height;
-	this.geometry = geometry;
 
-	this.baseCurves = [];
+	this.active = true;
 
-	var curvegeometry;
-	this.objcontainer = new THREE.Object3D();
-	for (var i = 0; i <= geometry.n; i++) {
-		var material = new THREE.LineBasicMaterial({
-			//color: "#"+((1<<24)*Math.random()|0).toString(16) //color: "#000000", 
-			linewidth: 2 ,
-			color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
-		});
-		var baseCurve1 = new BaseCurve(geometry, i, width, height);
-		curvegeometry = new THREE.Geometry();
-		curvegeometry.curve = baseCurve1;
-		curvegeometry.vertices = baseCurve1.getPoints( 300 );
-		curvegeometry.dynamic = true;
-
-		this.baseCurves.push(curvegeometry);
-		var curveObject = new THREE.Line(curvegeometry, material);
-		curveObject.dynamic = true;
-		this.objcontainer.add(curveObject);
-		this.update();
-	}
-	this.add(this.objcontainer);
-
+	this.resetGeometry(geometry);
 };
 
 BaseFunctionCurves.prototype = Object.create(THREE.Object3D.prototype);
@@ -100,54 +65,69 @@ BaseFunctionCurves.prototype = Object.create(THREE.Object3D.prototype);
 BaseFunctionCurves.prototype.constructor = BaseFunctionCurves;
 
 BaseFunctionCurves.prototype.update = function () {
-	for (var i = 0; i < this.baseCurves.length; i++) {
-		//this.baseCurves[i].vertices = this.baseCurves[i].curve.getPoints( 10 );
-		//var u_min = 0;
-		//var u_max = 1;
-		
-		var u_min = 0;
-		var u_max = 1;
-		var samples = 300;
-		var diff = (u_max - u_min) / (samples );
-		var u = u_min;
-		for (var j = 0; j < samples; j++) {
-			//this.baseCurves[i].curve.getPoint( u );
-			this.baseCurves[i].vertices[j] = this.baseCurves[i].curve.getPoint( u );
-			u += diff;2
+	if(this.active) {
+		for (var i = 0; i < this.baseCurves.length; i++) {
+			this.baseCurves[i].needsUpdate = true;
+			this.baseTubes[i].dispose();
+			this.baseTubes[i] = new THREE.TubeGeometry(
+				this.baseCurves[i], //path
+				400, //segments
+				1, //radius
+				3, //radiusSegments
+				false //closed
+			);
+			this.baseTubeMeshes[i].geometry.dispose();
+			this.baseTubeMeshes[i].geometry = this.baseTubes[i];
+			this.baseTubeMeshes[i].geometry.verticesNeedUpdate = true;
+			this.baseTubeMeshes[i].verticesNeedUpdate = true;
 		}
-		this.baseCurves[i].vertices[samples] = this.baseCurves[i].curve.getPoint( u_max );
-		//this.baseCurves[i].vertices = this.baseCurves[i].curve.getPoints( 100 );
-		this.baseCurves[i].verticesNeedUpdate = true;
 	}
+ 	
 };
 
 
-
 BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
+	if(this.active) {
+		this.geometry = newgeometry;
 
-	this.geometry = newgeometry;
+		this.baseCurves = [];
+		this.baseTubes = [];
+		this.baseTubeMeshes = [];
 
-	this.baseCurves = [];
-	this.remove(this.objcontainer);
-	this.objcontainer = new THREE.Object3D();
-	var curvegeometry;
-	for (var i = 0; i <= this.geometry.n; i++) {
-		var material = new THREE.LineBasicMaterial({
-			linewidth: 2 ,
-			color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
-		});
-		var baseCurve1 = new BaseCurve(this.geometry, i, this.width, this.height);
-		curvegeometry = new THREE.Geometry();
-		curvegeometry.curve = baseCurve1;
-		curvegeometry.vertices = baseCurve1.getPoints( 99 );
-		curvegeometry.dynamic = true;
+		if(typeof this.objcontainer !== 'undefined') {
+			for (var i = 0; i < this.baseCurves.length; i++) {
+				this.baseTubes[i].dispose();
+				this.baseTubeMeshes[i].geometry.dispose();
+			}
+			this.remove(this.objcontainer);
+		}
+		
 
-		this.baseCurves.push(curvegeometry);
-		var curveObject = new THREE.Line(curvegeometry, material);
-		curveObject.dynamic = true;
-		this.objcontainer.add(curveObject);
+		this.objcontainer = new THREE.Object3D();
+		var curvegeometry;
+		for (var i = 0; i <= this.geometry.n; i++) {
+			var material = new THREE.MeshLambertMaterial({
+				color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
+			});
+			var baseCurve1 = new BaseCurve(this.geometry, i, this.width, this.height);
+			var tube = new THREE.TubeGeometry(
+				baseCurve1, //path
+				400, //segments
+				1, //radius
+				3, //radiusSegments
+				false //closed
+			);
+
+			var tubeMesh = new THREE.Mesh(tube, material);
+			tubeMesh.dynamic = true;
+			
+			this.baseCurves.push(baseCurve1);
+			this.baseTubes.push(tube);
+			this.baseTubeMeshes.push(tubeMesh);
+			this.objcontainer.add(tubeMesh);
+
+		}
+		this.add(this.objcontainer);
+
 	}
-	this.add(this.objcontainer);
-	this.update();
-
 };
