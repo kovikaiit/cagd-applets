@@ -49,6 +49,16 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 	}
 );
 
+BaseCurve.prototype.getTube = function() {
+	return new THREE.TubeGeometry(
+				this, //path
+				400, //segments
+				1, //radius
+				3, //radiusSegments
+				false //closed
+			);
+};
+
 var BaseFunctionCurves = function(geometry, width, height) {
 	THREE.Object3D.call(this);
 
@@ -69,13 +79,8 @@ BaseFunctionCurves.prototype.update = function () {
 		for (var i = 0; i < this.baseCurves.length; i++) {
 			this.baseCurves[i].needsUpdate = true;
 			this.baseTubes[i].dispose();
-			this.baseTubes[i] = new THREE.TubeGeometry(
-				this.baseCurves[i], //path
-				400, //segments
-				1, //radius
-				3, //radiusSegments
-				false //closed
-			);
+			this.baseTubes[i] = this.baseCurves[i].getTube();
+			
 			this.baseTubeMeshes[i].geometry.dispose();
 			this.baseTubeMeshes[i].geometry = this.baseTubes[i];
 			this.baseTubeMeshes[i].geometry.verticesNeedUpdate = true;
@@ -110,13 +115,7 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 				color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
 			});
 			var baseCurve1 = new BaseCurve(this.geometry, i, this.width, this.height);
-			var tube = new THREE.TubeGeometry(
-				baseCurve1, //path
-				400, //segments
-				1, //radius
-				3, //radiusSegments
-				false //closed
-			);
+			var tube = baseCurve1.getTube();
 
 			var tubeMesh = new THREE.Mesh(tube, material);
 			tubeMesh.dynamic = true;
