@@ -42,14 +42,14 @@ function showGUIElem(datguielement) {
 	var controlNet;
 	var curve;
 	var cEditor;
-	var orbit;
+	var orbit, orbit2D;
 	var bsCurves;
 	//var getCurvature;
 	var knotclosed = false;
 	var camera2D, camera3D, directionalLight, grid3D;
 
 	var knotScene, knotCamera, knotContainer, knotRenderer;
-	var parameterD, insertKnot, curveDegree, elevateDegree, typeChange, params;
+	var parameterD, insertKnot, curveDegree, curveDegreeBezier, elevateDegree, typeChange, params;
 	init();
 
 	render();
@@ -64,9 +64,6 @@ function showGUIElem(datguielement) {
 		camera3D.lookAt(new THREE.Vector3(0,0,0));
 
 		camera2D = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
-		camera2D.position.x = 0;
-		camera2D.position.y = 200;
-		camera2D.position.z = 0;
 
 		if (is2D) {
 			camera = camera2D;		
@@ -113,11 +110,16 @@ function showGUIElem(datguielement) {
 		// OrbitControl
 		if (is3D) {
 			orbit = new THREE.OrbitControls(camera, renderer.domElement);
+			orbit.addEventListener( 'change', render );
+		} else {
+			orbit2D = new THREE.OrbitControls(camera2D, renderer.domElement);
+			orbit2D.addEventListener( 'change', render );
+			orbit2D.enableRotate = false;
+		}
+		camera2D.position.x = 0;
+		camera2D.position.y = 0;
+		camera2D.position.z = 200;
 
-				orbit.addEventListener( 'change', render );
-
-
-		} 
 		
 		initCurve();
 
@@ -196,6 +198,9 @@ function showGUIElem(datguielement) {
 	}
 
 	function resetDragger() {
+		if(typeof knotDragger !== 'undefined') {
+			knotDragger.destroy();
+		}
 		var knotDragger = new KnotDragger(curve, function() {
 			cEditor.update();
 			bsCurves.update();
@@ -210,7 +215,8 @@ function showGUIElem(datguielement) {
 			p: 3,
 			curv: 0,
 			w: 1,
-			w2: 1
+			w2: 1,
+			n: 6
 		};
 		//, 'ratBezier', 'meang1test'
 		typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
@@ -219,11 +225,10 @@ function showGUIElem(datguielement) {
 		typeChange.onChange(function(value) {
 			
 			if(curve.curvetype === 'Bézier') {
+				showGUIElem(curveDegreeBezier);
 				hideGUIElem(curveDegree);
 				hideGUIElem(parameterD);
 				hideGUIElem(insertKnot);
-				showGUIElem(elevateDegree);
-				showGUIElem(reduceDegree);
 				curve.setDegree(curve.n);
 				resetDragger();
 			} else if(curve.curvetype === 'B-spline') {
@@ -232,14 +237,13 @@ function showGUIElem(datguielement) {
 				hideGUIElem(insertKnot);
 				curve.setDegree(params.p);
 				resetDragger();
-				hideGUIElem(elevateDegree);
-				hideGUIElem(reduceDegree);
+
+				hideGUIElem(curveDegreeBezier);
 			} else {
 				showGUIElem(parameterD);
 				showGUIElem(insertKnot);
 				hideGUIElem(curveDegree);
-				hideGUIElem(elevateDegree);
-				hideGUIElem(reduceDegree);
+				hideGUIElem(curveDegreeBezier);
 				resetDragger();
 				bsCurves.resetGeometry(curve);
 			}
@@ -283,8 +287,31 @@ function showGUIElem(datguielement) {
 		hideGUIElem(parameterW);
 		hideGUIElem(parameterW2);
 
+		var evelateDegreeFun = { preform:function(){ 
+			curve.elevateDegree();
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			resetDragger();
+			render();
+		}};
+
+		
+		var reduceDegreeFun = { preform:function(){ 
+			curve.reduceDegree();
+			cEditor.update();
+			cEditor.updateCurvePoint();
+			bsCurves.resetGeometry(curve);
+			controlNet.reset(camera); 
+			resetDragger();
+			render();
+		}};
+
+
 		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
+
 			if (curve.p != params.p) {
 				curve.setDegree(params.p);
 				cEditor.reset();
@@ -292,11 +319,29 @@ function showGUIElem(datguielement) {
 				cEditor.updateCurvePoint();
 				bsCurves.resetGeometry(curve);
 				resetDragger();
-				render();
+				render();			
 			}
 
 		});
 		hideGUIElem(curveDegree);
+
+		curveDegreeBezier = gui.add(params, 'n').min(1).max(20).step(1).name('Degree (n)');
+		curveDegreeBezier.onChange(function() {
+			if (curve.n != params.n) {
+				var diff = params.n - curve.n;
+				if (diff > 0) {
+					for (var i = 0; i < diff; i++) {
+						evelateDegreeFun.preform();
+					}
+				} else {
+					for (var i = 0; i < -diff; i++) {
+						reduceDegreeFun.preform();
+					}
+				}
+			}
+		});
+		hideGUIElem(curveDegreeBezier);
+
 
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.001).name('Parameter (t)');
 		parameter.onChange(function() {
@@ -354,44 +399,24 @@ function showGUIElem(datguielement) {
 				scene.remove(directionalLight);
 				orbit.dispose();
 				scene.remove(grid3D);
+				orbit2D = new THREE.OrbitControls(camera, renderer.domElement);
+				orbit2D.addEventListener( 'change', render );
+				orbit2D.enableRotate = false;
 			} else {
+
+				orbit2D.dispose();
 				camera = camera3D;
 				scene.add(directionalLight);
 				orbit = new THREE.OrbitControls(camera, renderer.domElement);
 				orbit.addEventListener( 'change', render );
+				
 				scene.add(grid3D);
 			}
 			controlNet.reset(camera); 
 			render();
 		});
 		
-		var evelateDegreeFun = { preform:function(){ 
-			curve.elevateDegree();
-			cEditor.update();
-			cEditor.updateCurvePoint();
-			bsCurves.resetGeometry(curve);
-			controlNet.reset(camera); 
-			resetDragger();
-			render();
-		}};
-
-		elevateDegree = gui.add(evelateDegreeFun,'preform').name('Degree elevation');
-		hideGUIElem(elevateDegree);
-
-
 		
-		var reduceDegreeFun = { preform:function(){ 
-			curve.reduceDegree();
-			cEditor.update();
-			cEditor.updateCurvePoint();
-			bsCurves.resetGeometry(curve);
-			controlNet.reset(camera); 
-			resetDragger();
-			render();
-		}};
-
-		var reduceDegree = gui.add(reduceDegreeFun,'preform').name('Degree reduction');
-		hideGUIElem(reduceDegree);
 
 
 		var insertKnotFun = { add:function(){ 
@@ -434,7 +459,6 @@ function showGUIElem(datguielement) {
 		showGUIElem(curveDegree);
 		hideGUIElem(parameterD);
 		hideGUIElem(insertKnot);
-		hideGUIElem(elevateDegree);
 		gui.open();
 
 		var x = gui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
@@ -473,8 +497,6 @@ function showGUIElem(datguielement) {
 	function initOptionsGui() {
 		optionsGui = new dat.GUI({ width: 300, resizable : false });
 
-		
-
 		var radius = optionsGui.add(controlNetParameters,'pointRadius').min(1).max(20).step(1).name("CP Radius");
 		radius.onChange(function() {
 			controlNet.reset(camera); 
@@ -489,14 +511,21 @@ function showGUIElem(datguielement) {
 		var color = new THREE.Color();
 		var colorConvert = handleColorChange( color );
 		var cpColor = optionsGui.addColor(data, 'CPcolor').name("CP color");
-		cpColor.onChange( handleColorChange( controlNetParameters.pointmaterial.color ) );
+		cpColor.onChange( function ( value ) {
+			handleColorChange( controlNetParameters.pointmaterial.color )(value); 
+			render();
+		} );
 		var background = optionsGui.addColor(data, 'backgroundColor').onChange( function ( value ) {
 			colorConvert( value );
 			renderer.setClearColor( color.getHex() );
 			render();
 		} );
 		var curveColor = optionsGui.addColor(data, 'curvecolor').name("Curve color");
-		curveColor.onChange( handleColorChange( curveParameters.material.color ) );
+		curveColor.onChange( 
+			function ( value ) {
+				handleColorChange( curveParameters.material.color )(value);
+				render();
+		});
 		var radius = optionsGui.add(curveParameters,'tuberadius').min(0.1).max(5).step(0.1).name("Curve thickness");
 		radius.onChange(function() {
 			cEditor.update();
@@ -507,20 +536,12 @@ function showGUIElem(datguielement) {
 			cEditor.update();
 			render();
 		});
-		//var fenceresolution = optionsGui.add(curveParameters,'fenceResolution').min(10).max(1000).step(1).name("Curve resolution");
-		//fenceresolution.onChange(function() {
-		//	cEditor.update();
-		//});
-		//dat.GUI.hideableGuis.remove(optionsGui);
 
 		var saveFileFun = { save:function() {
 			var blob = new Blob([saveFile()], {type: "text/plain;charset=utf-8"});
 			saveAs(blob, "curve.txt");
 		}};
 		optionsGui.add(saveFileFun,'save').name('Save curve');
-
-
-
 
 		var newInput = document.createElement("INPUT");
         newInput.id = "file-input";
@@ -540,9 +561,6 @@ function showGUIElem(datguielement) {
 		  reader.readAsText(file);
 		}
 
-
-
-
 		var x = optionsGui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
 		var customLi = document.createElement("li");
 		customLi.className = 'cr number openli';
@@ -550,9 +568,6 @@ function showGUIElem(datguielement) {
 		x[0].appendChild(customLi);
 
 		customLi.appendChild(newInput);
-
-
-
 
 
 		optionsGui.domElement.style.display = 'none';
@@ -605,43 +620,31 @@ function showGUIElem(datguielement) {
 	      		CP_.push(new THREE.Vector3(parseFloat(tokens[1]), parseFloat(tokens[2]), parseFloat(tokens[3])));
 	      	} 
 	    }
-	    if(type_ === "B-spline" && p_ !== 'undefined') {
-	    	
+	    if(type_ === "B-spline" && p_ !== 'undefined') {	    	
 	    	typeChange.setValue(type_);
 	    	curve.n = CP_.length - 1; 
-	    	//curve.U = knots_;
 	    	curveDegree.setValue(p_);
 	    	curve.setU(knots_);
-	    	//console.log(knots_.toString());
 	    	curve.P = CP_;
-	    	//typeChange.setValue(type_);
 	    	cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);
 			controlNet.reset(camera); 
 			resetDragger();
 	    } else if(type_ === "Bézier" && p_ !== 'undefined') {
-	    	
 	    	curve.P = CP_;
 	    	curve.n = CP_.length - 1; 
 	    	typeChange.setValue(type_);
-	    	
 	    	cEditor.update();
 			cEditor.updateCurvePoint();
 			bsCurves.resetGeometry(curve);
 			controlNet.reset(camera); 
 			resetDragger();
-	    } else if(type_ === "P-curve" && d_ !== 'undefined') {
-	    	
+	    } else if(type_ === "P-curve" && d_ !== 'undefined') {	
 	    	typeChange.setValue(type_);
 	    	curve.n = CP_.length - 1; 
-	    	//curve.U = knots_;
-	    	//curveDegree.setValue(p_);
-	    	
 	    	curve.knot = knots_;
-	    	//console.log(knots_.toString());
 	    	curve.P = CP_;
-	    	//typeChange.setValue(type_);
 	    	parameterD.setValue(d_);
 	    	cEditor.update();
 			cEditor.updateCurvePoint();

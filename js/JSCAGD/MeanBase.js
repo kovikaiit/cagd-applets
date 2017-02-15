@@ -3,7 +3,7 @@
 var JSCAGD = JSCAGD || {};
 
 /**
- * Container for static Bernstein base functions 
+ * Container for static test base functions 
  * @namespace
  */
 JSCAGD.MeanBase = {};
@@ -534,14 +534,13 @@ JSCAGD.MeanCurve.prototype.reduceDegree = function() {
 	var i;
 	Q[0] = this.P[0].clone();
 	Q[this.n-1] = this.P[this.n].clone();
-	for (i = 1; i <= (this.n-1)/2; i++) {
+	for (i = 1; i <= (this.n-1)/2 ; i++) {
 		nui = i / this.n;
 		Q[i] = this.P[i].clone();
 		Q[i].addScaledVector(Q[i-1], -nui);
 		Q[i].multiplyScalar(1/(1-nui));
 	}
-	for (i = this.n - 1; i >= this.n/2; i--) {
-		console.log("xx")
+	for (i = this.n - 1; i > this.n/2; i--) {
 		nui = i / this.n;
 		Q[i-1] = this.P[i].clone();
 		Q[i-1].addScaledVector(Q[i], -(1-nui));

@@ -33,7 +33,7 @@ var KnotDragger = function(geometry, onChange) {
 	var size = 8;
 	var height = 20;
 
-	var draggers = [];
+	this.draggers = [];
 
 	var x_min = 0;
 	var x_max = 500;
@@ -93,7 +93,7 @@ var KnotDragger = function(geometry, onChange) {
 		dragger.appendChild(canv);
 
 
-		draggers.push(dragger);
+		this.draggers.push(dragger);
 
 		container.appendChild(dragger);
 
@@ -137,5 +137,12 @@ var KnotDragger = function(geometry, onChange) {
 	document.onmousemove = _move_elem;
 	document.onmouseup = _destroy;
 
+};
+
+KnotDragger.prototype.destroy = function() {
+	for (var i = this.draggers.length - 1; i >= 0; i--) {
+		this.draggers[i].parent.removeChild(this.draggers[i]);
+		this.draggers[i].dispose();
+	}
 };
 

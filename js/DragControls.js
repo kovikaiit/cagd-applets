@@ -33,16 +33,29 @@ THREE.DragControls = function ( _objects, _camera, _domElement ) {
 	function activate() {
 
 		_domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
-		_domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
-		_domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		_domElement.addEventListener( 'touchmove', onDocumentMouseMove, false );
 
+		_domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
+		_domElement.addEventListener( 'touchstart', onDocumentMouseDown, false );
+
+		_domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		_domElement.addEventListener( "mouseout", onDocumentMouseUp, false );
+		_domElement.addEventListener( "touchend", onDocumentMouseUp, false );
+		_domElement.addEventListener( "touchcancel", onDocumentMouseUp, false );
+		_domElement.addEventListener( "touchleave", onDocumentMouseUp, false );
 	}
 
 	function deactivate() {
 
 		_domElement.removeEventListener( 'mousemove', onDocumentMouseMove, false );
+		_domElement.removeEventListener( 'touchmove', onDocumentMouseMove, false );
 		_domElement.removeEventListener( 'mousedown', onDocumentMouseDown, false );
+		_domElement.removeEventListener( 'touchstart', onDocumentMouseDown, false );
 		_domElement.removeEventListener( 'mouseup', onDocumentMouseUp, false );
+		_domElement.removeEventListener( "mouseout", onDocumentMouseUp, false );
+		_domElement.removeEventListener( "touchend", onDocumentMouseUp, false );
+		_domElement.removeEventListener( "touchcancel", onDocumentMouseUp, false );
+		_domElement.removeEventListener( "touchleave", onDocumentMouseUp, false );
 
 	}
 

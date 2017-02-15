@@ -47,25 +47,24 @@ JSCAGD.BezierCurve.prototype.elevateDegree = function() {
 /**
  * Degree reduction
  */
-JSCAGD.BezierCurve.prototype.reduceDegree = function() {
+JSCAGD.MeanCurve.prototype.reduceDegree = function() {
 	var Q = [];
 	var nui;
+	var i;
 	Q[0] = this.P[0].clone();
-	var k = this.n/2;
-	for (var i = 1; i <= (this.n-1)/2; i++) {
+	Q[this.n-1] = this.P[this.n].clone();
+	for (i = 1; i <= (this.n-1)/2; i++) {
 		nui = i / this.n;
-		Q[i] = this.P[i-1].clone();
+		Q[i] = this.P[i].clone();
 		Q[i].addScaledVector(Q[i-1], -nui);
 		Q[i].multiplyScalar(1/(1-nui));
 	}
-	for (var i = this.n - 1; i >= this.n/2; i++) {
+	for (i = this.n - 1; i >= this.n/2; i--) {
 		nui = i / this.n;
-		Q[i] = this.P[i-1].clone();
-		Q[i].addScaledVector(Q[i+1], -(1-nui));
-		Q[i].multiplyScalar(1/nui);
+		Q[i-1] = this.P[i].clone();
+		Q[i-1].addScaledVector(Q[i], -(1-nui));
+		Q[i-1].multiplyScalar(1/nui);
 	}
-
-	Q[this.n-1] = this.P[this.n].clone();
 	this.n -= 1;
 	this.P = Q;
 };

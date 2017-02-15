@@ -4,9 +4,9 @@ var JSCAGD = JSCAGD || {};
 
 /**
  * The P-curve
- * @param  {List} P             The control points
- * @param  {Number} d           Fulness parameter
- * @param  {List} knots    		The knot vector
+ * @param  {List} P -            The control points
+ * @param  {Number} d  -         Fulness parameter
+ * @param  {List} knots  -  		The knot vector
  */
 JSCAGD.PCurve = JSCAGD.ParametricCurve.create(
 	function(P, knots, d) {
@@ -56,7 +56,7 @@ JSCAGD.PCurve.prototype.insertKnot = function(t) {
 
 /**
  * Find the correspponding knot interval
- * @param  {Number} t Parameter
+ * @param  {Number} t - Parameter
  * @return {Numbet}   The knot interval index
  */
 JSCAGD.PCurve.prototype.findSpan = function(t) {
