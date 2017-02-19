@@ -221,7 +221,7 @@ function showGUIElem(datguielement) {
 			n: 6
 		};
 		//, 'ratBezier', 'meang1test'
-		typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
+		typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve',  'meang1test' ] ).name('Curve type');
 
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
 		typeChange.onChange(function(value) {
@@ -293,13 +293,15 @@ function showGUIElem(datguielement) {
 		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
 
-			if (curve.p != params.p) {
+			if (curve.p !== params.p) {
+
 				curve.setDegree(params.p);
 				cEditor.reset();
 				cEditor.update();
 				cEditor.updateCurvePoint();
-				bsCurves.resetGeometry(curve);
 				resetDragger();
+				bsCurves.resetGeometry(curve);
+				
 				render();			
 			}
 
@@ -308,7 +310,7 @@ function showGUIElem(datguielement) {
 
 		curveDegreeBezier = gui.add(params, 'n').min(1).max(20).step(1).name('Degree (n)');
 		curveDegreeBezier.onChange(function() {
-			if (curve.n != params.n) {
+			if (curve.n !== params.n) {
 				var diff = params.n - curve.n;
 				if (diff > 0) {
 					for (var i = 0; i < diff; i++) {
@@ -526,6 +528,12 @@ function showGUIElem(datguielement) {
 		var resolution = optionsGui.add(curveParameters,'curveResolution').min(10).max(1000).step(1).name("Curve resolution");
 		resolution.onChange(function() {
 			cEditor.update();
+			render();
+		});
+
+		var seed = optionsGui.add(baseFunctionsParameters,'seed').name("Random seed");
+		seed.onChange(function() {
+			bsCurves.resetGeometry(curve);
 			render();
 		});
 

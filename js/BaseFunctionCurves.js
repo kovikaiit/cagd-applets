@@ -5,6 +5,15 @@
 /* globals JSCAGD */
 /* globals THREE */
 
+var baseFunctionsParameters = {
+
+		radius: 1,
+
+		resolution: 400,
+
+		seed: 'jhbjhbjh '
+};
+
 var is3D = is3D || false;
 
 var BaseCurve = JSCAGD.ParametricCurve.create(
@@ -16,10 +25,11 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 	},
 
 	function(u) {
+
 		var N;
 		var span;
 		if(this.c_geom.curvetype === 'meang1test') {
-			N = JSCAGD.MeanBase.evalAllGeneralCorner5(u, this.c_geom.knot, this.c_geom.d);
+			N = JSCAGD.MeanBase.evalAllGeneralCorner5_TEST(u, this.c_geom.knot, this.c_geom.d);
 		} else if(this.c_geom.curvetype === 'meang1' || this.c_geom.curvetype === 'P-curve') {
 			N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.c_geom.knot, this.c_geom.d);
 		} else if (this.c_geom.curvetype === 'meang0') {
@@ -31,6 +41,7 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 		}	else if (this.c_geom.curvetype === 'B-spline' || this.c_geom.curvetype === 'Bézier') {
 			span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
 			N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
+
 		}	else if (this.c_geom.curvetype === 'ratBezier') {
 
 			N = JSCAGD.BernsteinBase.evalAllRational(this.c_geom.n, this.c_geom.W, u);
@@ -50,10 +61,11 @@ var BaseCurve = JSCAGD.ParametricCurve.create(
 );
 
 BaseCurve.prototype.getTube = function() {
+	
 	return new THREE.TubeGeometry(
 				this, //path
-				400, //segments
-				1, //radius
+				baseFunctionsParameters.resolution, //segments
+				baseFunctionsParameters.raduis, //radius
 				3, //radiusSegments
 				false //closed
 			);
@@ -110,6 +122,7 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 		this.objcontainer = new THREE.Object3D();
 		var curvegeometry;
+		//Math.seedrandom(baseFunctionsParameters.seed);
 		for (var i = 0; i <= this.geometry.n; i++) {
 			var material = new THREE.MeshLambertMaterial({
 				color: '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6)
@@ -119,6 +132,8 @@ BaseFunctionCurves.prototype.resetGeometry = function (newgeometry) {
 
 			var tubeMesh = new THREE.Mesh(tube, material);
 			tubeMesh.dynamic = true;
+			tubeMesh.geometry.verticesNeedUpdate = true;
+			tubeMesh.verticesNeedUpdate = true;
 			
 			this.baseCurves.push(baseCurve1);
 			this.baseTubes.push(tube);

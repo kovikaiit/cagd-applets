@@ -206,19 +206,33 @@ JSCAGD.MeanBase.evalAllGeneralCorner4 = function(t, knot, d) {
 	}
 	for (i = 0; i < n; i++) {
 		r[i] = Math.sqrt((knot[i] - t) * (knot[i] - t) + (0.1 * d) * (0.1 * d));
-		if (i !== n - 1) {
+		if (i !== n - 1 && (knot[i + 1] - knot[i]) !== 0) {
 			b[i] = 1 / (knot[i + 1] - knot[i]);
+		} else {
+			b[i] = 0;
 		}
 	}
 	basis[0] = (r[1] + (knot[1] - t)) / b[0] / (t * t) ;
 	total += basis[0];
 	basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) / b[0]+ r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1];
+	if (b[1] === 0) {
+			basis[1] += (knot[1] - t) / r[1];
+		}
 	total += basis[1];
 	for (i = 2; i < n - 2; i++) {
 		basis[i] = (r[i - 1] * b[i - 1] + r[i + 1] * b[i] - (b[i - 1] + b[i]) * r[i]);
+		if(b[i-1] === 0) {
+			basis[i] -= (knot[i] - t) / r[i];
+		} 
+		if (b[i] === 0) {
+			basis[i] += (knot[i] - t) / r[i];
+		}
 		total += basis[i];
 	}
 	basis[n - 2] = (1 / (1 - t) - (knot[n - 2] - t) / ((1 - t) * r[n - 2])) / b[n - 2] + r[n - 3] * b[n - 3] - r[n - 2] * b[n - 3] + (knot[n - 2] - t) / r[n - 2]; 
+	if ( b[n - 3] === 0) {
+		basis[n - 2] -= (knot[n - 2] - t) / r[n - 2]; 
+	}
 	total += basis[n - 2];
 	basis[n - 1] = (r[n - 2] / ((1 - t) * (1 - t)) - (knot[n - 2] - t) / ((1 - t) * (1 - t))) / b[n - 2];
 	total += basis[n - 1];
@@ -247,37 +261,152 @@ JSCAGD.MeanBase.evalAllGeneralCorner5 = function(t, knot, d) {
 	//basis[0] = r[1] *b[0]-r[0]*b[0]+  r[0] / t+(r[1] + (knot[1] - t)) * b[0] / (t * t) /100;
 	//var f0 = r[0]*r[0]/(t*t);
 	//var f0 = (r[0] - t)/(t*t)/n;
-	var f0 = (r[1] + (knot[1] - t)) / (t * t) / (n-1);
+	//var f0 = (r[1] + (knot[1] - t)) / (t * t) / (n-1);
 	//var f0 = r[0]*(1 - t/r[0] )/(t*t)/10;
-	var f1 = (1 / t + (knot[1] - t) / (t * r[1]))/ (n-1);
-	//var fn = d*(1 - (1-t) / r[n-1])/((1-t)*(1-t))/100;
-	var fn = (1+d)*(1 - (1-t) / r[n-1])/((1-t)*(1-t))/10;
+	//var f1 = (1 / t + (knot[1] - t) / (t * r[1]))/ (n-1);
+	var fn = d*(1 - (1-t) / r[n-1])/((1-t)*(1-t))/100;
+	//var fn = (1+d)*(1 - (1-t) / r[n-1])/((1-t)*(1-t))/10;
 
-	basis[0] = r[1] *b[0]-r[0]*b[0] +r[0]/t + f0;//+  r[0] / t /2;
-	total += basis[0];
-	basis[1] = r[2] * b[1] - r[1] * (b[1]+b[0]) +r[0]*b[0] +f1;
+	//basis[0] = r[1] *b[0]-r[0]*b[0] +(r[0]/t )/t/(n-1);//+  r[0] / t /2;
+	
+	//basis[1] = r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1] + ((knot[1] - t) / r[1] /t/(n-1) - r[1] * b[0] + r[0] * b[0]); 
 	//basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) * b[0] /100 + r[2] * b[1] - r[1] * (b[1]+b[0]) +r[0]*b[0];// - (knot[1] - t) / r[1];
-	total += basis[1];
+	
 
 	//basis[0] = (r[1] + (knot[1] - t)) /(n-1) / (t * t) ;
 	//total += basis[0];
 	//basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) / (n-1) + r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1];
 	//total += basis[1];
-	for (i = 2; i < n - 2; i++) {
+	basis[0] = (r[1] + (knot[1] - t)) / b[0] / (t * t) ;
+	basis[0] *= knot[2]/t;
+	total += basis[0];
+	basis[1] = (1 / t + (knot[1] - t) / (t * r[1])) / b[0]+ r[2] * b[1] - r[1] * b[1] - (knot[1] - t) / r[1];
+	basis[1] *= knot[2]/t;
+	total += basis[1];
+	basis[2] = (r[1] -r[2]) * b[1] +(knot[2] -t)/r[2];//  + 
+	basis[2] *= knot[2]/t;
+	basis[2] += -(knot[2] -t)/r[2] + (r[3] -r[2]) * b[2] ;
+	total += basis[2];
+	for (i = 3; i < n - 2; i++) {
 		basis[i] = (r[i - 1] * b[i - 1] + r[i + 1] * b[i] - (b[i - 1] + b[i]) * r[i]);
 		total += basis[i];
 	}
-	basis[n - 2] = b[n-2]*(1-t)*fn/(1+d);
-	basis[n - 2] += r[n - 3] * b[n - 3] - r[n - 2] * (b[n - 3]+b[n-2]) +r[n-1]* b[n - 2]; 
+	basis[n - 2] = (1 / (1 - t) - (knot[n - 2] - t) / ((1 - t) * r[n - 2])) / b[n - 2] + r[n - 3] * b[n - 3] - r[n - 2] * b[n - 3] + (knot[n - 2] - t) / r[n - 2]; 
 	total += basis[n - 2];
-	basis[n - 1] = (r[n - 2] * b[n - 2] - r[n - 1] * b[n - 2]) + r[n - 1] / (1 - t);
-	basis[n - 1] += fn - b[n-2]*(1-t)*fn/(1+d);
+	basis[n - 1] = (r[n - 2] / ((1 - t) * (1 - t)) - (knot[n - 2] - t) / ((1 - t) * (1 - t))) / b[n - 2];
 	total += basis[n - 1];
 	for (i = 0; i < n; i++) {
 		basis[i] /= total;
 	}
 	return basis;
 };
+
+
+JSCAGD.MeanBase.evalAllGeneralCorner5_TEST = function(t, U, d) {
+	var n = U.length-1;
+	var i;
+	var r = [];
+	var f = [];
+	var total = 0;
+	var w = [];
+	var basis = [];
+	var c1, cnm1, W, b1, bnm1;
+	d /= 10;
+	if (t === 1 || t === 0) {
+		return getSide(t, n+1);
+	}
+
+
+	for (i = 1; i <= n-1; i++) { //i=1
+		r[i] = Math.sqrt((U[i] - t) * (U[i] - t) + d*d);
+	}
+	for (i = 1; i <= n-2; i++) {
+		if((U[i + 1] - U[i]) !== 0) {
+			f[i] = (r[i+1] - r[i]) / (U[i + 1] - U[i]);
+		} else {
+			f[i] = (U[i] - t)/r[i];
+		} 
+	}
+	b1 = U[1] * (r[1] + U[1] - t) / t;
+	w[0] = b1/t;
+	c1 =  (b1 - U[1] + t)/r[1];
+	w[1] = c1 + f[1];
+	for (i = 2; i <= n-2; i++) {
+		w[i] = f[i] - f[i-1];
+	}
+	bnm1 = (1- U[n-1])*(r[n-1] - U[n-1] + t )/(1-t);
+	cnm1 = (bnm1 + U[n-1] - t )/r[n-1];
+	w[n-1] = cnm1 - f[n-2];
+	w[n] = bnm1 /(1-t);
+	W = w[0] + c1 + cnm1 + w[n];
+	for (i = 0; i <= n; i++) {
+		w[i] /= W;
+	}
+	return w;
+
+
+};
+
+
+
+JSCAGD.MeanBase.evalAllGeneralCorner5_TEST_tmp = function(t, U, d) {
+	var n = U.length-1;
+	var i;
+	var r = [];
+	var f = [];
+	var total = 0;
+	var w = [];
+	var basis = [];
+	var c1, cnm1, W;
+	d /= 10;
+	if (t === 1 || t === 0) {
+		return getSide(t, n);
+	}
+
+
+
+	for (i = 0; i <= n-1; i++) { //i=1
+		r[i] = Math.sqrt((U[i] - t) * (U[i] - t) + d*d);
+	}
+	for (i = 0; i <= n-2; i++) {
+		if((U[i + 1] - U[i]) !== 0) {
+			f[i] = (r[i+1] - r[i]) / (U[i + 1] - U[i]);
+		} else {
+			f[i] = 0;
+		} 
+	}
+	w[0] = U[1] * (r[1] + U[1] - t)/(t*t);
+	c1 =  U[1] * (r[1] + U[1] - t)/(t*r[1]);
+	if (f[1] !== 0) {
+		c1 -= (U[1] - t)/r[1];
+	}
+	w[1] = c1 + f[1];
+	for (i = 2; i <= n-2; i++) {
+		w[i] = f[i] - f[i-1];
+		if (f[i] === 0) {
+			w[i] += (U[i] - t)/r[i];
+		}
+		if (f[i - 1] === 0) {
+			w[i] -= (U[i] - t)/r[i];
+		}
+	}
+	cnm1 = (1- U[n-1])*(r[n-1] - U[n-1] + t )/((1-t) * r[n-1]);
+	if (f[n-2] !== 0) {
+		cnm1 += (U[n-1] - t)/r[n-1];
+	}
+	w[n-1] = cnm1 - f[n-2];
+	w[n] = (1- U[n-1])*(r[n-1] - U[n-1] + t) /((1-t) * (1-t));
+	W = w[0] + c1 + cnm1 + w[n];
+	for (i = 0; i <= n; i++) {
+		w[i] /= W;
+	}
+	return w;
+
+
+};
+
+
+
 
 JSCAGD.MeanBase.evalAllGeneralCorner6 = function(t, knot, d) {
 	var n = knot.length;
@@ -417,7 +546,7 @@ JSCAGD.MeanCurve = JSCAGD.ParametricCurve.create(
 		//var N = JSCAGD.MeanBase.evalAllGeneral(this.n + 1, u, this.topPoints);
 		var N;
 		if(this.curvetype === 'meang1test') {
-			N = JSCAGD.MeanBase.evalAllGeneralCorner5(u, this.knot, this.d);
+			N = JSCAGD.MeanBase.evalAllGeneralCorner5_TEST(u, this.knot, this.d);
 		} else if (this.curvetype === 'meang1' || this.curvetype === 'P-curve') {
 			N = JSCAGD.MeanBase.evalAllGeneralCorner4(u, this.knot, this.d);
 		} else if (this.curvetype === 'meang0') {
