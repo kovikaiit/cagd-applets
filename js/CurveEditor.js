@@ -32,9 +32,13 @@ var curveParameters = {
 
 		arrowLength: 200,
 
-		fenceResolution: 600,
+		fenceResolution: 400,
+		fenceResolutionMax: 600,
 
-		curveResolution: 300
+		fenceLengthMul: 1,
+
+		curveResolution: 300, 
+
 };
 
 function getCircleOrig(curve, t) {
@@ -136,9 +140,9 @@ var CurveEditor = function(curve) {
 	this.curvatureFence = new THREE.Object3D();
 	this.fenceLines = [];
 	var ti = 0;
- 	var diff = 1/curveParameters.fenceResolution;
+ 	var diff = 1/curveParameters.fenceResolutionMax;
  	var i;
-	for (i = 0; i < curveParameters.fenceResolution-1; i++) {
+	for (i = 0; i < curveParameters.fenceResolutionMax-1; i++) {
 		var tan = this.curve.getTangent(ti);
 		var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
 		curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
@@ -204,7 +208,7 @@ CurveEditor.prototype.update = function() {
 			ti += diff;
 			var tan = this.curve.getTangent(ti);
 			var normal = new JSCAGD.Vector3(tan.y, -tan.x, 0);
-			var curvature = Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
+			var curvature = curveParameters.fenceLengthMul*Math.max(Math.min(20*JSCAGD.NumDer.getCurvature(this.curve, ti), 2),-2);
 			if(is3D && (this.curve.curvetype === 'Bézier' || this.curve.curvetype === 'B-spline') ) {
 				normal = this.curve.getNormalBS(ti);
 				curvature = -Math.abs(curvature);
@@ -226,7 +230,12 @@ CurveEditor.prototype.update = function() {
 			positions[4] = fencepoint.y;
 			positions[5] = fencepoint.z;
 			line.geometry.attributes.position.needsUpdate = true; 
-			
+			this.curvatureFence.add(line);
+		}
+		for (var i = curveParameters.fenceResolution-1; i < curveParameters.fenceResolutionMax-1; i++) {
+			var line = this.fenceLines[i];
+			this.curvatureFence.remove(line);
+
 		}
 	}
 };

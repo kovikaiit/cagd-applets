@@ -12,7 +12,7 @@ var JSCAGD = JSCAGD || {};
  */
 JSCAGD.PSurface = JSCAGD.ParametricSurface.create(
 
-	function(P, n, m, du, dv) {
+	function(P, n, m,  du, dv, knotsU, knotsV) {
 		this.n = n;
 		this.m = typeof m !== 'undefined' ? m : n;
 		this.P = P;
@@ -22,15 +22,26 @@ JSCAGD.PSurface = JSCAGD.ParametricSurface.create(
 		this.P = P;
 		var i;
 
-		this.knotsU = [];
-		this.knotsV = [];
-		for (i = 0; i <= this.n; i++) {
-			this.knotsU.push(i / this.n);
+		
+		
+		if(typeof knotsU !== 'undefined') {
+			this.knotsU = knotsU;
+		} else {
+			this.knotsU = [];
+			for (i = 0; i <= this.n; i++) {
 
+				this.knotsU.push(i / this.n);
+			}
 		}
-		for (i = 0; i <= this.m; i++) {
-			this.knotsV.push(i / this.m);
-			
+		
+		if(typeof knotsV !== 'undefined') {
+			this.knotsV = knotsV;
+		} else {
+			this.knotsV = [];
+			for (i = 0; i <= this.m; i++) {
+
+				this.knotsV.push(i / this.m);
+			}
 		}
 	},
 
@@ -39,7 +50,6 @@ JSCAGD.PSurface = JSCAGD.ParametricSurface.create(
 		var M = JSCAGD.PBase.eval(v, this.knotsV, this.dv);
 		var C = new JSCAGD.Vector3(0.0, 0.0, 0.0);
 		var i, j;
-		console.log(this.P[0]);
 		for (i = 0; i <= n; i++) {
 			for (j = 0; j <= m; j++) {
 				C.addScaledVector(this.P[i][j], N[i] * M[j]);

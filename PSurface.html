@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta name="author" content="Script Tutorials" />
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-        <title>Bezier surface</title>
+        <title>P-surface</title>
 	<style>
 		body {
 			color: #ffffff;
@@ -19,7 +19,7 @@
     </head>
     <body>
 		<div id="container"></div>
-		        <script src="js/FileSaver.min.js"></script>
+		<script src="js/FileSaver.min.js"></script>
         <script src="js/three.min.js"></script>
         <script src="js/JSCAGD/JSCAGD.js"></script>
         <script src="js/JSCAGD/NumDer.js"></script>
@@ -48,7 +48,7 @@
 			var curvePoint;
 			var n, m;
 			var Psurface;
-
+			var controlNet;
 			init();
 			render();
 			
@@ -65,7 +65,7 @@
 			  
 				// Grid
 				scene.add( new THREE.GridHelper( 500, 100 ) );
-				scene.fog = new THREE.Fog( 0xe0e0e0, 150, 10000 );
+				//scene.fog = new THREE.Fog( 0xe0e0e0, 150, 10000 );
 				
 				// Lights
 				var ambientLight = new THREE.AmbientLight( 0xffffff );
@@ -139,7 +139,6 @@
 				})
 
 				
-				
 				initSurface();
 				initGui();
 				
@@ -162,12 +161,13 @@
 				window.addEventListener( 'resize', onWindowResize, false );
 				renderer.render( scene, camera );
 
+
 			}
 			
 			function initSurface() {
 				// Surface parameters
 				n = 4;
-				m = 4;
+				m = 5;
 				P = [];
 				P_rev = [];
 				for (k = 0; k <= n; k++) 
@@ -175,21 +175,13 @@
 					P.push(new Array())
 					for (l = 0; l <= m; l++) 
 					{
-						P[k][l] = new THREE.Vector3(400 - k * 200, Math.sin(l+k)*50*(k-2)*(l-2) + 100, 400 - l * 200);
+						P[k][l] = new THREE.Vector3(400 - k * 200, 100, 400 - l * 200);
+						//P[k][l] = new THREE.Vector3(400 - k * 200, Math.sin(l+k)*50*(k-2)*(l-2) + 100, 400 - l * 200);
 					}
 				}
-				for (l = 0; l <= m; l++) 
-				{
-					P_rev.push(new Array())
-					for (k = 0; k <= n; k++) 
-					{
-						
-						P_rev[l][k] =  P[k][l];
-						
-					}
-				}
+				
 
-				Psurface = new JSCAGD.PSurface(P, n, m, 0.1);
+				Psurface = new JSCAGD.PSurface(P, n, m, 0.5);
 
 			}
 			
@@ -200,6 +192,9 @@
 				{
 					u: 0.5, // numeric slider
 					v: 0.5,
+					du: 0.5,
+					dv: 0.5,
+					resolution: 50,
 					exportToSTL: function () {
 
 						var exporter = new THREE.STLExporter();
@@ -212,52 +207,90 @@
 
 						var exporter = new THREE.OBJExporter();
 						var result = exporter.parse( surfaceMesh );
-						var blob = new Blob([result], {type: "text/plain;charset=utf-8"});
+						var blob = new Blob([result], {type: "text/plain;charset=ascii"});
 						saveAs(blob, "surface.obj");
 
 					}
 				};
-				// gui.add( parameters )
-				
-				var parameter = gui.add( parameters, 'u' ).min(0).max(1).step(0.01).name('Parameter (u)');
-				parameter.onChange(function(value) {
-					updateSurfacePoint();
-				});
-				var parameterV = gui.add( parameters, 'v' ).min(0).max(1).step(0.01).name('Parameter (v)');
-				parameterV.onChange(function(value) {
-					updateSurfacePoint();
-				});
 
-				var parameterDu = gui.add( Psurface, 'du' ).min(0.001).max(3).step(0.001).name('du');
+
+				var parameterDu = gui.add( parameters, 'du' ).min(0.001).max(3).step(0.001).name('du');
 				parameterDu.onChange(function(value) {
 					updateSurfacePoint();
 					updateSurface();
 					render();
 				});
 
-				var parameterDv = gui.add( Psurface, 'dv' ).min(0.001).max(3).step(0.001).name('dv');
+				var parameterDv = gui.add( parameters, 'dv' ).min(0.001).max(3).step(0.001).name('dv');
 				parameterDv.onChange(function(value) {
 					updateSurfacePoint();
 					updateSurface();
 					render();
 				});
-				var opacity = gui.add( material, 'opacity' ).min(0).max(1).step(0.01).name('Opacity');
-				
 
+
+				var resolution = gui.add( parameters, 'resolution' ).min(10).max(150).step(1).name('Resolution');
+				resolution.onChange(function(value) {
+					
+					updateSurface();
+					render();
+				});
+
+
+				var opacity = gui.add( material, 'opacity' ).min(0).max(1).step(0.01).name('Opacity');
+				opacity.onChange(render);
+
+				var saveFileFun = { save:function() {
+					var blob = new Blob([saveSketchesFile()], {type: "text/plain;charset=utf-8"});
+					saveAs(blob, "curvenet.skd");
+				}};
+				gui.add(saveFileFun,'save').name('Save c.net (skd)');
+
+				var saveFileFunT = { save:function() {
+					var blob = new Blob([saveFile()], {type: "text/plain;charset=utf-8"});
+					saveAs(blob, "surface.txt");
+				}};
+				gui.add(saveFileFunT,'save').name('Save surface');
 				
 				gui.add(parameters, 'exportToOBJ').name("Export OBJ");
 				gui.add(parameters, 'exportToSTL').name("Export STL");
 				
+				var newInput = document.createElement("INPUT");
+		        newInput.id = "file-input";
+		        newInput.type = "file";
+		        newInput.addEventListener('change', readSingleFile, false);
+		        
+		        function readSingleFile(e) {
+				  var file = e.target.files[0];
+				  if (!file) {
+				    return;
+				  }
+				  var reader = new FileReader();
+				  reader.onload = function(e) {
+				    var contents = e.target.result;
+				    loadSurface(contents);
+				  };
+				  reader.readAsText(file);
+				}
+
+				var x = gui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
+				var customLi = document.createElement("li");
+				customLi.className = 'cr number openli';
+
+				x[0].appendChild(customLi);
+
+				customLi.appendChild(newInput);
 
 				gui.open();
 			}
 			
 			function drawSurface() {
-				var x = PointOnBezierSurface(P, n, 0.5, 0.5);
+				var l, k;
+				objects = [];
 				bezierGeometry = new THREE.ParametricGeometry(function ( u, v ) { 
 					return Psurface.getPoint(u,v);
-    			}, 50, 50 );
-
+    			}, parameters.resolution, parameters.resolution );
+				controlNet = new THREE.Object3D();
 				controlPolygonPaths = new Array();
 				controlPolygons = new Array();
 				for (k = 0; k <= n; k++) {
@@ -265,21 +298,34 @@
 					controlPolygons[k].vertices = P[k];
 					controlPolygons[k].computeLineDistances();
 					controlPolygonPaths.push(new THREE.Line( controlPolygons[k], dashedmaterial ));	
-					scene.add( controlPolygonPaths[k] );
+					controlNet.add( controlPolygonPaths[k] );
 				}
+				P_rev = [];
+				for (l = 0; l <= m; l++) 
+				{
+					P_rev.push(new Array())
+					for (k = 0; k <= n; k++) 
+					{
+						
+						P_rev[l][k] =  P[k][l];
+						
+					}
+				}
+
 				for (l = 0; l <= m; l++) 
 				{
 					controlPolygons.push(new THREE.Geometry());
 					controlPolygons[n + 1 + l].vertices = P_rev[l];
 					controlPolygons[n + 1 + l].computeLineDistances();
 					controlPolygonPaths.push(new THREE.Line( controlPolygons[n + 1 + l], dashedmaterial ));	
-					scene.add( controlPolygonPaths[n + 1 + l] );
+					controlNet.add( controlPolygonPaths[n + 1 + l] );
 				}
+				
 				// Mesh generation
 				surfaceMesh = new THREE.Mesh( bezierGeometry, material );
 				scene.add( surfaceMesh );
 				
-				
+				controlPoints = [];
 				// Control points
 				for (k = 0; k <= n; k++) 
 				{
@@ -292,20 +338,10 @@
 						sphere.position.set(P[k][l].x, P[k][l].y, P[k][l].z);
 						objects.push(sphere);
 						controlPoints[k].push(sphere);
-						scene.add(sphere);
+						controlNet.add(sphere);
 					}
 				}
-				this.showPoint = true;
-				this.showFrame = true;
-				
-				// Point at 't'
-				var geometry = new THREE.SphereGeometry(10, 32, 32);
-				curvePoint = new THREE.Mesh( geometry, movingpointmaterial );
-				var pos = PointOnBezierSurface(P, n, m, parameters.u, parameters.v);
-				curvePoint.position.set(pos.x, pos.y, pos.z);
-				scene.add(curvePoint);
-
-
+				scene.add(controlNet);
 			}
 			
 			function updateSurface() {
@@ -323,9 +359,12 @@
 						P_rev[l][k] =  P[k][l];						
 					}
 				}
+				bezierGeometry.dispose();
+				Psurface.du = parameters.du;
+				Psurface.dv = parameters.dv;
 				bezierGeometry = new THREE.ParametricGeometry(function ( u, v ) { 
 					return Psurface.getPoint(u,v);
-    			}, 50, 50);
+    			}, parameters.resolution, parameters.resolution);
 
 				
 				
@@ -354,12 +393,7 @@
 			}
 			
 			function updateSurfacePoint() {
-				var pos = PointOnBezierSurface(P, n, m, parameters.u, parameters.v);
-				curvePoint.position.set(pos.x, pos.y, pos.z);
-
-					if (this.showPoint) {
-						this.curvePoint.position.set(pos.x, pos.y, pos.z);
-					}
+			
 					
 			}
 
@@ -405,6 +439,167 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				render();
 			}
+
+
+			function saveSketchesFile() {
+				var n_ = Psurface.n + 1;
+				var m_ = Psurface.m + 1;
+				var retval = "";
+
+//Important placing!!!
+retval += `; Sketches Data File
+; Do not edit this file!
+[VERSION]
+50
+[PARAMETERS]
+[FREE_CLUBS]
+`;
+
+				retval += (n_ * m_).toString() + "\n";
+				for (i = 0; i < n_; i++) {
+					for (var j = 0; j < m_; j++) {
+						retval += i.toString() + "00" + j.toString() + " " + Psurface.P[i][j].x.toString() + " "; 
+						retval += Psurface.P[i][j].y.toString() + " " ;
+						retval += Psurface.P[i][j].z.toString() + " 0 -1 0\n";
+					}
+				}
+
+//Important placing!!!
+retval += `[MAGNETIC_CLUBS]
+0
+[CURVES]
+`;
+
+				retval += (2*n_ * m_- n_ - m_).toString() + "\n";
+				for (i = 0; i < n_; i++) {
+					for (var j = 0; j < m_-1; j++) {
+						retval += i.toString() + "11" + j.toString() + " 0 0 0 0 -1 0 2 " ;
+						retval += i.toString() + "00" + j.toString() + " "; 
+						retval += i.toString() + "00" + (j+1).toString() + "\n";
+					}
+				}
+				for (i = 0; i < n_-1; i++) {
+					for (var j = 0; j < m_; j++) {
+						retval += i.toString() + "11" + j.toString() + " 0 0 0 0 -1 0 2 " ;
+						retval += i.toString() + "00" + j.toString() + " "; 
+						retval += (i+1).toString() + "00" + j.toString() + "\n";
+					}
+				}
+				
+
+//Important placing!!!
+retval += `[SURFACES]
+0
+[AUXILIARY_CLUBS]
+0
+[INTERPOLATED_CLUBS]
+0
+[AUXILIARY_CURVES]
+0
+[SURFACE_CLUBS]
+0
+[TRIM_CURVES]
+0
+[PLANES]
+0
+[SKETCHBOX]
+SKETCHBOX_SIZES=712x325x919
+SKETCHBOX_CENTER=0x0x0
+GRID=1,5,1
+[VIEWS]
+1
+1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+[COMPOSITION]
+
+[MESHES]
+0
+[SPECTRUM]
+0
+0
+[TEXTURE]
+0
+[PARAMETERS]
+0 0
+[HISTORY]
+0 0
+[END]
+`;
+	
+				return retval;
+			}
+			function saveFile() {
+				var retval = "";
+				var i, j;
+				retval += "TYPE " + "Psurface" + "\n";
+				retval += "N " + Psurface.n.toString() + "\n";
+				retval += "M " + Psurface.m.toString() + "\n";
+				retval += "DU " + Psurface.du.toString() + "\n";
+				retval += "DV " + Psurface.dv.toString() + "\n";
+				for (i = 0; i < Psurface.knotsU.length; i++) {
+					retval += "KNOTU " + Psurface.knotsU[i].toString() + "\n";
+				}
+				for (i = 0; i < Psurface.knotsV.length; i++) {
+					retval += "KNOTV " + Psurface.knotsV[i].toString() + "\n";
+				}
+				for (i = 0; i <= Psurface.n; i++) {
+					for (var j = 0; j <= Psurface.m; j++) {
+						retval += "CP " + Psurface.P[i][j].x.toString() + " "; 
+						retval += Psurface.P[i][j].y.toString() + " " ;
+						retval += Psurface.P[i][j].z.toString() + "\n";
+					}
+				}
+				return retval;
+			}
+
+			function loadSurface(content) {
+				var lines = content.split('\n');
+				var CP_ = [];
+				var knotsU_ = [];
+				var knotsV_ = [];
+				var du_, dv_, type_, n_, m_, i, j;
+				var cpIndex = 0;
+			    for(var i = 0; i < lines.length; i++){
+			    	var tokens = lines[i].split(" ");
+			      	if(tokens[0] === "TYPE") {
+			      		type_ = tokens[1];
+			      	} else if(tokens[0] === "DU") {
+			      		du_ = parseFloat(tokens[1]);
+			      	} else if(tokens[0] === "DV") {
+			      		dv_ = parseFloat(tokens[1]);
+			      	} else if(tokens[0] === "N") {
+			      		n_ = parseInt(tokens[1]);
+			      		for (var j = 0; j <= n_; j++) {
+			      			CP_.push([]);
+			      		}
+			      	} else if(tokens[0] === "M") {
+			      		m_ = parseInt(tokens[1]);
+			      		console.log(m_);
+			      	} else if(tokens[0] === "KNOTU") {
+			      		knotsU_.push(parseFloat(tokens[1]));
+			      	} else if(tokens[0] === "KNOTV") {
+			      		knotsV_.push(parseFloat(tokens[1]));
+			      	} else if(tokens[0] === "CP") {
+			      		//j = cpIndex % (n_+1);
+			      		var rownum  = Math.floor(cpIndex / (m_+1));
+			      		
+			      		CP_[rownum].push(new THREE.Vector3(parseFloat(tokens[1]), parseFloat(tokens[2]), parseFloat(tokens[3])));
+			      		cpIndex++;
+			      	} 
+			    }
+
+			    P = CP_;
+			    n = n_;
+			    m = m_;
+			    parameters.du = du_;
+			    parameters.dv = du_;
+			    Psurface = new JSCAGD.PSurface(CP_, n_, m_, du_, dv_, knotsU_, knotsV_);
+			    scene.remove(surfaceMesh);
+			    scene.remove(controlNet);
+			    drawSurface();
+			    render();
+
+			}
+
 		
 		</script>
 		

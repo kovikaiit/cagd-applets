@@ -597,6 +597,7 @@ JSCAGD.MeanCurve.prototype.insertKnot = function(t) {
 	this.knot.splice(i + 1, 0, t);
 	this.P.splice(i+1, 0, newPoint);
 	this.n += 1;
+	return i+1;
 };
 
 JSCAGD.MeanCurve.prototype.findSpan = function(t) {
@@ -773,5 +774,74 @@ JSCAGD.MeanCurve.prototype.getFrenetFrame = function(u) {
 	};
 };
 
+
+JSCAGD.MeanCurve.prototype.insertKnotBS = function(u) {
+	var k = JSCAGD.KnotVector.findSpan(this.U, this.n, this.p, u);
+	var r = 1;
+	var s = 0;
+	for (var i = 0; i < this.U.length; i++) {
+		if(this.U[i] === u) {
+			s++;
+		}
+	}
+
+	if(r+s > this.p) {
+		return;
+	}
+	var np = this.n;
+	var p = this.p;
+	var UP = this.U;
+	var Pw = this.P;
+
+	var mp = np + p + 1;
+	var nq = np + r;
+	var UQ = [];
+	var Qw = [];
+	var Rw = [];
+
+	var i, j, L;
+
+	for (i = 0; i <= k; i++) {
+		UQ[i] = UP[i];
+	}
+	for (i = 1; i <= r; i++) {
+		UQ[k + i] = u;
+	}
+	for (i = k + 1; i <= mp; i++) {
+		UQ[i + r] = UP[i];
+	}
+	for (i = 0; i <= k - p; i++) {
+		Qw[i] = Pw[i];
+	}
+	for (i = k - s; i <= np; i++) {
+		Qw[i + r] = Pw[i];
+	}
+	for (i = 0; i <= p - s; i++) {
+		Rw[i] = Pw[k - p + i].clone();
+	}
+	for (j = 1; j <= r; j++) {
+		L = k - p + j;
+		for (i = 0; i <= p - j - s; i++) {
+			var alpha = (u - UP[L + i]) / (UP[i + k + 1] - UP[L + i]);
+			Rw[i].multiplyScalar(1.0 - alpha);
+			Rw[i].addScaledVector(Rw[i + 1], alpha);
+			//Rw[i] = alpha * Rw[i + 1] + (1.0 - alpha) * Rw[i]; // vector type !!!
+		}
+		Qw[L] = Rw[0];
+		Qw[k + r - j - s] = Rw[p - j - s];
+	}
+	for (i = L + 1; i < k - s; i++) {
+		Qw[i] = Rw[i - L];
+	}
+
+	this.n = nq;
+	this.P = Qw;
+	this.U = UQ;
+
+	this.knot = [];
+	for (i = 0; i < this.n + 1; i++) {
+		this.knot.push(i / this.n);
+	}
+};
 
 

@@ -33,6 +33,14 @@ function showGUIElem(datguielement) {
 	datguielement.domElement.parentNode.parentNode.style.display = 'block';
 };
 
+function getUrlVars() {
+var vars = {};
+var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+vars[key] = value;
+});
+return vars;
+};
+
 // Main program
 
 (function() {
@@ -46,9 +54,9 @@ function showGUIElem(datguielement) {
 	var bsCurves;
 	//var getCurvature;
 	var knotclosed = false;
-	var camera2D, camera3D, directionalLight, grid3D;
-
-	var knotScene, knotCamera, knotContainer, knotRenderer;
+	var camera2D, camera3D, directionalLight, grid3D, grid2D;
+	var isGrid2D = false;
+	var knotScene, knotCamera, knotContainer, knotRenderer, knotDragger;
 	var parameterD, insertKnot, curveDegree, curveDegreeBezier, elevateDegree, typeChange, params;
 	init();
 
@@ -78,6 +86,14 @@ function showGUIElem(datguielement) {
 		//grid3D.lookAt(new THREE.Vector3(10,10,10));
 		if (is3D) {
 			scene.add(grid3D);
+		}
+
+		// Grid
+		grid2D = new THREE.GridHelper(500, 100);
+		grid2D.rotation.x = 1.57;
+		if(isGrid2D) {
+
+			scene.add(grid2D);
 		}
 		scene.fog = new THREE.Fog(0xe0e0e0, 150, 10000);
 		// Lights
@@ -151,7 +167,8 @@ function showGUIElem(datguielement) {
 
 		// Renderer
 		knotRenderer = new THREE.WebGLRenderer({
-			antialias: true
+			antialias: true,
+			preserveDrawingBuffer: true 
 		});
 		knotRenderer.setPixelRatio(window.devicePixelRatio);
 		knotRenderer.setClearColor(0xffffff);
@@ -168,8 +185,12 @@ function showGUIElem(datguielement) {
 
 		knotRenderer.render(knotScene, knotCamera);
 
-		resetDragger();
-
+		knotDragger = new KnotDragger(curve, function() {
+			cEditor.update();
+			bsCurves.update();
+			cEditor.updateCurvePoint();
+			render();
+		});
 	}
 
 	function initCurve() {
@@ -200,15 +221,10 @@ function showGUIElem(datguielement) {
 	}
 
 	function resetDragger() {
-		if(typeof knotDragger !== 'undefined') {
-			knotDragger.destroy();
-		}
-		var knotDragger = new KnotDragger(curve, function() {
-			cEditor.update();
-			bsCurves.update();
-			cEditor.updateCurvePoint();
-			render();
-		});
+		//if(typeof knotDragger === 'undefined') {
+		//	knotDragger.destroy();
+		//}
+		knotDragger.reset()
 	}
 
 	function initGui() {
@@ -221,8 +237,13 @@ function showGUIElem(datguielement) {
 			n: 6
 		};
 		//, 'ratBezier', 'meang1test'
-		typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve',  'meang1test' ] ).name('Curve type');
+		if(getUrlVars()["pcurve"] === "on") {
+			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
 
+		} else {
+			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline' ] ).name('Curve type');
+		}
+		
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
 		typeChange.onChange(function(value) {
 			
@@ -236,7 +257,7 @@ function showGUIElem(datguielement) {
 			} else if(curve.curvetype === 'B-spline') {
 				hideGUIElem(parameterD);
 				showGUIElem(curveDegree);
-				hideGUIElem(insertKnot);
+				showGUIElem(insertKnot);
 				curve.setDegree(params.p);
 				resetDragger();
 
@@ -336,7 +357,7 @@ function showGUIElem(datguielement) {
 		var parameter = gui.add(cEditor, 't').min(0).max(1).step(0.001).name('Parameter (t)');
 		parameter.onChange(function() {
 			cEditor.updateCurvePoint();
-
+			knotDragger.updateParam(cEditor.t);
 			render();
 			//params.curv = JSCAGD.NumDer.getCurvature(curve, cEditor.t);
 		});
@@ -354,6 +375,8 @@ function showGUIElem(datguielement) {
 		var showPoint = gui.add(cEditor, 'showPoint').name('Moving point at t');
 		showPoint.onChange(function() {
 			cEditor.setShow();
+			knotDragger.showParam = cEditor.showPoint;
+			knotDragger.setShowParam();
 			render();
 		});
 
@@ -410,7 +433,15 @@ function showGUIElem(datguielement) {
 
 
 		var insertKnotFun = { add:function(){ 
-			curve.insertKnot(cEditor.t); 
+			if(curve.curvetype == "B-spline")
+			{
+				curve.insertKnotBS(cEditor.t); 
+			} else {
+				var insertindex = curve.insertKnot(cEditor.t); 
+				baseFunctionsParameters.knotinsertmode = true;
+				baseFunctionsParameters.knotinsertindex = insertindex;
+			}
+			cEditor.reset(); 
 			cEditor.update(); 
 			controlNet.reset(camera); 
 			bsCurves.resetGeometry(curve);
@@ -422,33 +453,47 @@ function showGUIElem(datguielement) {
 			
 
 		var plusD = function (e) { 
-			e = e || event
+			e = e || event;
 			if(e.keyCode === 187 || e.keyCode === 3 || e.keyCode === 107) {
 				if (curve.curvetype==='B-spline') {
 					curveDegree.setValue(params.p + 1);
 				} else if (curve.curvetype === 'P-curve') {
 					parameterD.setValue(cEditor.d + 0.2);
-				} 
+				} else if (curve.curvetype === 'Bézier' ) {
+					curveDegreeBezier.setValue(params.n + 1);
+				}
 			} else if (e.keyCode === 189 || e.keyCode === 109){
 				if (curve.curvetype==='B-spline') {
 					curveDegree.setValue(params.p - 1);
 				} else if (curve.curvetype === 'P-curve' ) {
 					parameterD.setValue(cEditor.d - 0.2);
+				} else if (curve.curvetype === 'Bézier' ) {
+					curveDegreeBezier.setValue(params.n - 1);
 				}
-			} else if (e.keyCode === 39) {
+			} else if (e.keyCode === 39 || e.keyCode === 70) {
 				parameter.setValue(cEditor.t + 0.01)
-			} else if (e.keyCode === 37) {
+
+			} else if (e.keyCode === 37 || e.keyCode === 66) {
 				parameter.setValue(cEditor.t - 0.01)
 			} else if (e.keyCode === 79) {
 				triggerHide();
+			} else if (e.keyCode === 71) {
+				if(!isGrid2D) {
+					isGrid2D = true;
+					scene.add(grid2D);
+				} else {
+					isGrid2D = false;
+					scene.remove(grid2D);
+				}
 			}
+			render();
 		}
 		document.onkeydown = plusD;
 
 		insertKnot = gui.add(insertKnotFun,'add').name('Insert knot');
 		showGUIElem(curveDegree);
 		hideGUIElem(parameterD);
-		hideGUIElem(insertKnot);
+		showGUIElem(insertKnot);
 		gui.open();
 
 		var x = gui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
@@ -531,17 +576,36 @@ function showGUIElem(datguielement) {
 			render();
 		});
 
-		var seed = optionsGui.add(baseFunctionsParameters,'seed').name("Random seed");
-		seed.onChange(function() {
-			bsCurves.resetGeometry(curve);
+		var fenceresolution = optionsGui.add(curveParameters,'fenceResolution').min(10).max(600).step(1).name("Fence resolution");
+		fenceresolution.onChange(function() {
+			cEditor.update();
 			render();
 		});
+
+		var fenceremul = optionsGui.add(curveParameters,'fenceLengthMul').min(0).max(10).step(0.01).name("Fence length");
+		fenceremul.onChange(function() {
+			cEditor.update();
+			render();
+		});
+
+
 
 		var saveFileFun = { save:function() {
 			var blob = new Blob([saveFile()], {type: "text/plain;charset=utf-8"});
 			saveAs(blob, "curve.txt");
 		}};
 		optionsGui.add(saveFileFun,'save').name('Save curve');
+
+		var saveImageFun = { save:function() {
+			//window.open( knotRenderer.domElement.toDataURL( 'image/png' ), 'screenshot' );
+			//var blob = new Blob([knotRenderer.domElement.toDataURL( 'image/png' )], {type: "image/png"});
+			//saveAs(blob, "curve_d" + curve.d.toString() +"_n" + curve.n.toString() + ".png");
+			knotRenderer.domElement.toBlob(function(blob) {
+			    saveAs(blob, "curve_d" + curve.d.toString() +"_n" + curve.n.toString() + ".jpg");
+			});
+		}};
+
+		optionsGui.add(saveImageFun,'save').name('Snapshot base functions');
 
 		var newInput = document.createElement("INPUT");
         newInput.id = "file-input";
