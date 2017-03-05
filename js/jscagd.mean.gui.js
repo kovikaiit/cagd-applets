@@ -241,7 +241,7 @@ return vars;
 			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
 
 		} else {
-			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline' ] ).name('Curve type');
+			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'ratBezier' ] ).name('Curve type');
 		}
 		
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
@@ -307,8 +307,8 @@ return vars;
 			render();
 		});
 		//parameterD.domElement.parentNode.parentNode.style.display = 'block';
-		hideGUIElem(parameterW);
-		hideGUIElem(parameterW2);
+		//hideGUIElem(parameterW);
+		//hideGUIElem(parameterW2);
 
 
 		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');

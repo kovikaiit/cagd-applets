@@ -9,18 +9,16 @@ var is3D = !is2D;
 
 var curveParameters = {
 		material: new THREE.MeshLambertMaterial({
-			color: 0x000bbb,
-			shading: THREE.SmoothShading
+			color: 0x000bbb
+			
 		}),
 
 		movingpointmaterial: new THREE.MeshLambertMaterial({
-			color: 0x2e9800,
-			shading: THREE.SmoothShading
+			color: 0x2e9800
 		}),
 
 		knotpointmaterial: new THREE.MeshLambertMaterial({
-			color: 0x2fa1d6,
-			shading: THREE.SmoothShading
+			color: 0x2fa1d6
 		}),
 
 		curvfencematerial:  new THREE.LineBasicMaterial( { 

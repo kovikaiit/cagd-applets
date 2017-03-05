@@ -10,7 +10,6 @@ var controlNetParameters = {
 
 		pointmaterial: new THREE.MeshLambertMaterial({
 			color: 0xAA0000,
-			shading: THREE.SmoothShading
 		}),
 
 		dashedmaterial: new THREE.LineBasicMaterial({

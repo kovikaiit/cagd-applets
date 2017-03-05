@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" >
+    <head>
+        <meta charset="utf-8" />
+        <meta name="author" content="Script Tutorials" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <title>P-surface</title>
+	<style>
+		body {
+			color: #ffffff;
+			background-color: #000000;
+			margin: 0px;
+			overflow: hidden;
+		}
+
+	</style>
+	<script src="js/dat.gui.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+		<div id="container"></div>
+		<script src="js/FileSaver.min.js"></script>
+        <script src="js/three.min.js"></script>
+        <script src="js/JSCAGD/JSCAGD.js"></script>
+        <script src="js/JSCAGD/TriMesh.js"></script>
+        <script src="js/JSCAGD/NumDer.js"></script>
+        <script src="js/JSCAGD/PBase.js"></script>
+        <script src="js/JSCAGD/PSurface.js"></script>
+        <script src="js/MeshEditor.js"></script>
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/bezier.js"></script>
+		<script src="js/TransformControls.js"></script>
+		<script src="js/exporters/STLExporter.js"></script>
+		<script src="js/exporters/OBJExporter.js"></script>
+		<script>
+			var container;
+			var scene, camera, renderer;
+			var geometry, material, surfaceMesh, tube, controlPolygons, controlPolygonPaths, bezierGeometry;
+			var controlPoints = [];
+			var material, dashedmaterial, pointmaterial, movingpointmaterial;
+			var orbit;
+			var P, P_rev;
+			var control;
+			var mouse = new THREE.Vector2();
+			var raycaster;
+			var objects = new Array();
+			var SELECTED;
+			var gui;
+			var parameters;
+			var curvePoint;
+			var n, m;
+			var Psurface;
+			var controlNet;
+			var editor;
+			init();
+			render();
+			
+
+			function init() 
+			{
+
+				// Scene and camera
+				scene = new THREE.Scene();
+				camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.set( 20, 8, 13 );
+				camera.lookAt( new THREE.Vector3() );
+
+			  
+				// Grid
+				scene.add( new THREE.GridHelper( 5, 1 ) );
+				//scene.fog = new THREE.Fog( 0xe0e0e0, 150, 10000 );
+				
+				// Lights
+				var ambientLight = new THREE.AmbientLight( 0xffffff );
+				scene.add( ambientLight );
+				var directionalLight = new THREE.DirectionalLight( 0xffffff );
+				directionalLight.position.x = 50;
+				directionalLight.position.y = 200;
+				directionalLight.position.z = 0;
+				//directionalLight.position.normalize();
+				scene.add( directionalLight );
+
+				var directionalLight2 = new THREE.DirectionalLight( 0xffffff );
+				directionalLight2.position.copy( camera.position );
+				scene.add( directionalLight2 );
+
+
+				var pointLight = new THREE.PointLight( 0xffffff, 4, 800 );
+				pointLight.position.x = 0;
+				pointLight.position.y = 600;
+				pointLight.position.z = 0;
+				scene.add( pointLight );
+				var pointLight2 = new THREE.PointLight( 0xffffff, 4, 800 );
+				pointLight2.position.x = 0;
+				pointLight2.position.y = -600;
+				pointLight2.position.z = 0;
+				scene.add( pointLight2 );
+
+				// Renderer
+				renderer = new THREE.WebGLRenderer({ antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setClearColor( 0xf0f0f0 );
+				renderer.setSize( window.innerWidth, window.innerHeight);
+				
+				// Div container
+				container = document.getElementById( 'container' );
+				container.appendChild( renderer.domElement );
+				container.addEventListener('mousedown', onDocumentMouseDown, false);
+				
+				// Raycasting for selection
+				raycaster = new THREE.Raycaster();
+				raycaster.params.Points.threshold = 0.1;
+				
+				// OrbitControl
+				orbit = new THREE.OrbitControls( camera, renderer.domElement );
+				orbit.addEventListener( 'change', light_update );
+
+				function light_update()
+				{
+				    directionalLight2.position.copy( camera.position );
+				    render();
+				}
+				//orbit.enableZoom = false;
+				
+				// Materials
+				//var isotexture = new THREE.ImageUtils.loadTexture( "isophotes.png" );
+				//isotexture.wrapS = THREE.RepeatWrapping;
+				//isotexture.wrapT = THREE.RepeatWrapping;
+				//isotexture.repeat.set( 4, 4 );
+
+				//material = new THREE.MeshBasicMaterial( {envMap: isotexture, reflectivity: 100.0, side: THREE.DoubleSide, color: 0xffffff, shading:THREE.SmoothShading} );
+
+				var texture = THREE.ImageUtils.loadTexture('highgrid.jpg');
+				material = new THREE.MeshPhongMaterial( { map: texture, color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, metalness: 10.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
+				pointmaterial = new THREE.MeshLambertMaterial( { color: 0x880000, shading: THREE.SmoothShading } ) ;
+				movingpointmaterial = new THREE.MeshLambertMaterial( { color: 0x2e9800, shading: THREE.SmoothShading } ) ;
+				dashedmaterial = new THREE.LineBasicMaterial({
+					color: 0xAA0000,
+					linewidth: 1
+					//dashSize: 30,
+					//gapSize: 20
+				})
+
+				
+				initMesh();
+				initGui();
+				
+				
+				
+
+				// Control point moving
+				control = new THREE.TransformControls( camera, renderer.domElement );
+				control.size = 0.5;
+				control.addEventListener( 'change', function () {
+					updateSurface();
+					updateSurfacePoint();
+					render();
+				} );
+			
+
+				
+				
+			
+				window.addEventListener( 'resize', onWindowResize, false );
+				renderer.render( scene, camera );
+
+
+			}
+			
+			function initGui() {
+				gui = new dat.GUI();
+
+				parameters = {
+					u: 0.5, // numeric slider
+					v: 0.5,
+					du: 0.5,
+					dv: 0.5,
+					resolution: 50,
+					exportToSTL: function () {
+
+						var exporter = new THREE.STLExporter();
+						var result = exporter.parse( surfaceMesh );
+						var blob = new Blob([result], {type: "text/plain;charset=ascii"});
+						saveAs(blob, "surface.stl");
+
+					},
+					exportToOBJ: function () {
+
+						var exporter = new THREE.OBJExporter();
+						var result = exporter.parse( surfaceMesh );
+						var blob = new Blob([result], {type: "text/plain;charset=ascii"});
+						saveAs(blob, "surface.obj");
+
+					}
+				};
+
+
+
+				var resolution = gui.add( parameters, 'resolution' ).min(10).max(150).step(1).name('Resolution');
+				resolution.onChange(function(value) {
+					
+					
+					render();
+				});
+
+
+
+				var saveFileFun = { save:function() {
+					var blob = new Blob([saveSketchesFile()], {type: "text/plain;charset=utf-8"});
+					saveAs(blob, "curvenet.skd");
+				}};
+				gui.add(saveFileFun,'save').name('Save c.net (skd)');
+
+				var saveFileFunT = { save:function() {
+					var blob = new Blob([saveFile()], {type: "text/plain;charset=utf-8"});
+					saveAs(blob, "surface.txt");
+				}};
+				gui.add(saveFileFunT,'save').name('Save surface');
+				
+				gui.add(parameters, 'exportToOBJ').name("Export OBJ");
+				gui.add(parameters, 'exportToSTL').name("Export STL");
+				
+				var newInput = document.createElement("INPUT");
+		        newInput.id = "file-input";
+		        newInput.type = "file";
+		        newInput.addEventListener('change', readSingleFile, false);
+		        
+		        function readSingleFile(e) {
+				  var file = e.target.files[0];
+				  if (!file) {
+				    return;
+				  }
+				  var reader = new FileReader();
+				  reader.onload = function(e) {
+				    var contents = e.target.result;
+				    mesh = JSCAGD.TriMesh.loadOBJ(contents);
+				    //mesh.build();
+					mesh.calcMeanCurvatures();
+
+				    scene.remove(editor);
+				    editor = new MeshEditor(mesh, camera, renderer,
+					function() {
+						render();
+					});
+					scene.add(editor);
+					render();
+				  };
+				  reader.readAsText(file);
+				}
+
+				var x = gui.domElement.getElementsByTagName("ul"); // dangeruos, not too nice solution !!
+				var customLi = document.createElement("li");
+				customLi.className = 'cr number openli';
+
+				x[0].appendChild(customLi);
+
+				customLi.appendChild(newInput);
+
+				gui.open();
+			}
+
+			function initMesh() {
+				var tetraederV = [new THREE.Vector3(0,0,0), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
+				var tetraederT = [[0,1,2], [0, 2, 3], [0, 3, 1], [1, 3, 2]];
+				var mesh =  new JSCAGD.TriMesh(tetraederT, tetraederV);
+				mesh.build();
+				mesh.calcMeanCurvatures();
+
+				editor = new MeshEditor(mesh, camera, renderer,
+				function() {
+
+					render();
+				});
+				scene.add(editor);
+			}
+			
+			
+			function render() {
+				//requestAnimationFrame( render );
+				//control.update();
+				renderer.render( scene, camera );
+			}	
+			
+			function onDocumentTouchStart(event){
+			    event.preventDefault();
+			    event.clientX = event.touches[0].clientX;
+			    event.clientY = event.touches[0].clientY;
+			    onDocumentMouseDown(event);
+			}
+			
+			function onDocumentMouseDown(event) {
+				event.preventDefault();
+				editor.onMouseDown(event);
+				render();
+			}
+			
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				render();
+			}
+
+
+			function saveSketchesFile() {
+				var n_ = Psurface.n + 1;
+				var m_ = Psurface.m + 1;
+				var retval = "";
+
+//Important placing!!!
+retval += `; Sketches Data File
+; Do not edit this file!
+[VERSION]
+50
+[PARAMETERS]
+[FREE_CLUBS]
+`;
+
+				retval += (n_ * m_).toString() + "\n";
+				for (i = 0; i < n_; i++) {
+					for (var j = 0; j < m_; j++) {
+						retval += i.toString() + "00" + j.toString() + " " + Psurface.P[i][j].x.toString() + " "; 
+						retval += Psurface.P[i][j].y.toString() + " " ;
+						retval += Psurface.P[i][j].z.toString() + " 0 -1 0\n";
+					}
+				}
+
+//Important placing!!!
+retval += `[MAGNETIC_CLUBS]
+0
+[CURVES]
+`;
+
+				retval += (2*n_ * m_- n_ - m_).toString() + "\n";
+				for (i = 0; i < n_; i++) {
+					for (var j = 0; j < m_-1; j++) {
+						retval += i.toString() + "11" + j.toString() + " 0 0 0 0 -1 0 2 " ;
+						retval += i.toString() + "00" + j.toString() + " "; 
+						retval += i.toString() + "00" + (j+1).toString() + "\n";
+					}
+				}
+				for (i = 0; i < n_-1; i++) {
+					for (var j = 0; j < m_; j++) {
+						retval += i.toString() + "11" + j.toString() + " 0 0 0 0 -1 0 2 " ;
+						retval += i.toString() + "00" + j.toString() + " "; 
+						retval += (i+1).toString() + "00" + j.toString() + "\n";
+					}
+				}
+				
+
+//Important placing!!!
+retval += `[SURFACES]
+0
+[AUXILIARY_CLUBS]
+0
+[INTERPOLATED_CLUBS]
+0
+[AUXILIARY_CURVES]
+0
+[SURFACE_CLUBS]
+0
+[TRIM_CURVES]
+0
+[PLANES]
+0
+[SKETCHBOX]
+SKETCHBOX_SIZES=712x325x919
+SKETCHBOX_CENTER=0x0x0
+GRID=1,5,1
+[VIEWS]
+1
+1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+[COMPOSITION]
+
+[MESHES]
+0
+[SPECTRUM]
+0
+0
+[TEXTURE]
+0
+[PARAMETERS]
+0 0
+[HISTORY]
+0 0
+[END]
+`;
+	
+				return retval;
+			}
+			function saveFile() {
+				var retval = "";
+				var i, j;
+				retval += "TYPE " + "Psurface" + "\n";
+				retval += "N " + Psurface.n.toString() + "\n";
+				retval += "M " + Psurface.m.toString() + "\n";
+				retval += "DU " + Psurface.du.toString() + "\n";
+				retval += "DV " + Psurface.dv.toString() + "\n";
+				for (i = 0; i < Psurface.knotsU.length; i++) {
+					retval += "KNOTU " + Psurface.knotsU[i].toString() + "\n";
+				}
+				for (i = 0; i < Psurface.knotsV.length; i++) {
+					retval += "KNOTV " + Psurface.knotsV[i].toString() + "\n";
+				}
+				for (i = 0; i <= Psurface.n; i++) {
+					for (var j = 0; j <= Psurface.m; j++) {
+						retval += "CP " + Psurface.P[i][j].x.toString() + " "; 
+						retval += Psurface.P[i][j].y.toString() + " " ;
+						retval += Psurface.P[i][j].z.toString() + "\n";
+					}
+				}
+				return retval;
+			}
+
+			function loadOBJ(content) {
+				var lines = content.split('\n');
+				var V = [];
+				var F = [];
+			    for(var i = 0; i < lines.length; i++){
+			    	var tokens = lines[i].split(" ");
+					if(tokens[0] === "f") {
+			      		F.push([parseInt(tokens[1])-1, parseInt(tokens[2])-1, parseInt(tokens[3])-1]);
+			      	}  else if(tokens[0] === "v") {
+			      		V.push(new THREE.Vector3(parseFloat(tokens[1]), parseFloat(tokens[2]), parseFloat(tokens[3])));
+			      	} 
+			    }
+			    console.log(V.length);
+			    console.log(F.length);
+			    return {T: F, V: V};
+			}
+
+		
+		</script>
+		
+    </body>
+</html>

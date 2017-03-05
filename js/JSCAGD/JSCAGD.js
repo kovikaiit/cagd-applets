@@ -8,6 +8,8 @@
  */
 var JSCAGD = JSCAGD || {};
 
+JSCAGD.epsilon = 0.000001;
+
 
 JSCAGD.Vector3 = THREE.Vector3;
 JSCAGD.Vector2 = THREE.Vector2;

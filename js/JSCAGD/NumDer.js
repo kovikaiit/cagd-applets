@@ -70,6 +70,20 @@ JSCAGD.NumDer.getCurvature = function( curve, t ) {
 };
 
 
+JSCAGD.NumInt = {};
+
+
+JSCAGD.NumInt.trapezoid = function(func, a, b, dx) {
+	var n = ((b - a) / dx);
+	var x0, x1, Ai, i;
+	var area = 0;
+	for (i = 1; i <= n; i++) {
+		x0 = a+(i-1)*dx;
+		x1 = a+i*dx;
+		Ai = dx * (func(x0) + func(x1))/ 2.0;
+		area += Ai;
+	}
+};
 
 
 
