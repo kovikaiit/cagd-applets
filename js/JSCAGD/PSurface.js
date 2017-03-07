@@ -5,10 +5,6 @@ var JSCAGD = JSCAGD || {};
 
 /**
  * P-surface class inherited from ParametricSurface
- * @param  {[type]} P           [description]
- * @param  {[type]} n           [description]
- * @param  {[type]} m           [description]
- * @param  {[type]} d           [description]
  */
 JSCAGD.PSurface = JSCAGD.ParametricSurface.create(
 
@@ -21,8 +17,6 @@ JSCAGD.PSurface = JSCAGD.ParametricSurface.create(
 		this.dv = typeof dv !== 'undefined' ? dv : 2 / (this.n + 1);
 		this.P = P;
 		var i;
-
-		
 		
 		if(typeof knotsU !== 'undefined') {
 			this.knotsU = knotsU;
@@ -50,8 +44,8 @@ JSCAGD.PSurface = JSCAGD.ParametricSurface.create(
 		var M = JSCAGD.PBase.eval(v, this.knotsV, this.dv);
 		var C = new JSCAGD.Vector3(0.0, 0.0, 0.0);
 		var i, j;
-		for (i = 0; i <= n; i++) {
-			for (j = 0; j <= m; j++) {
+		for (i = 0; i <= this.n; i++) {
+			for (j = 0; j <= this.m; j++) {
 				C.addScaledVector(this.P[i][j], N[i] * M[j]);
 			}
 		}

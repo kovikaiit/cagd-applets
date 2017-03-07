@@ -5,7 +5,7 @@
 var JSCAGD = JSCAGD || {};
 
 
-JSCAGD.TriMesh = function (T, V) {
+JSCAGD.TriMesh = function (V, T) {
 	this.T = T;
 	this.V = V;
 	this.n = V.length;
@@ -27,7 +27,8 @@ JSCAGD.TriMesh.prototype.build = function() {
 				vertex: this.T[i][j],
 				face: this.T[i]
 			};
-			if((typeof this.V[this.T[i][j]].edge) === 'undefined') {
+			this.edges.push(edge);
+			if(typeof this.V[this.T[i][j]].edge === 'undefined') {
 				this.V[this.T[i][j]].edge = edge;
 			}
 
@@ -68,6 +69,12 @@ JSCAGD.TriMesh.prototype.build = function() {
 					}
 				}
 			}
+		}
+	}
+	for (i = 0; i < this.edges.length; i++) {
+		var e = this.edges[i];
+		if(typeof e.opposite === 'undefined') {
+			this.V[e.vertex].edge = e;
 		}
 	}
 };
@@ -132,7 +139,7 @@ JSCAGD.TriMesh.prototype.calcMeanCurvatures = function() {
 			}
 			n2 = edge.opposite.face.normal.clone();
 			v = halfedgeVector(edge);
-			var beta = Math.acos(n1.dot(n2));
+			var beta = Math.acos(Math.min(n1.dot(n2),1));
 			beta *= n1.cross(n2).dot(v) >= 0.0 ? 1.0 : -1.0;
 			betasum += beta*v.length();
 			areasum += edge.face.area;
@@ -156,11 +163,26 @@ JSCAGD.TriMesh.prototype.getTHREEGeometry = function() {
 		geometry.faces.push( new THREE.Face3( this.T[i][0], this.T[i][1], this.T[i][2] ) );
 	}
 	geometry.computeBoundingSphere();
+	if(typeof this.uvs !== 'undefined') {
+		for (i = 0; i < this.m; i++) {
+			geometry.faceVertexUvs[0].push ([this.uvs[this.T[i][0]], this.uvs[this.T[i][1]], this.uvs[this.T[i][2]]]);
+		}
+	}
+	for (var i = 0; i < this.m; i++) {
+		for (var k = 0; k < 3; k++) {
+			geometry.faces[i].vertexColors[k] = new THREE.Color();
+		}
+	}
 	return geometry;
 };
 
-
-
+JSCAGD.TriMesh.prototype.updateVertices = function(V) {
+	for (var i = 0; i < this.n; i++) {
+		this.V[i].x = V[i].x;
+		this.V[i].y = V[i].y;
+		this.V[i].z = V[i].z;
+	}
+};
 
 
 JSCAGD.TriMesh.loadOBJ = function(content) {
@@ -172,11 +194,29 @@ JSCAGD.TriMesh.loadOBJ = function(content) {
 		if (tokens[0] === "f") {
 			F.push([parseInt(tokens[1]) - 1, parseInt(tokens[2]) - 1, parseInt(tokens[3]) - 1]);
 		} else if (tokens[0] === "v") {
-			V.push(new JSCAGD.Vector3(50*parseFloat(tokens[1]), 50*parseFloat(tokens[2]), 50*parseFloat(tokens[3])));
+			V.push(new JSCAGD.Vector3(parseFloat(tokens[1]), parseFloat(tokens[2]), parseFloat(tokens[3])));
 		}
 	}
-	var mesh = new JSCAGD.TriMesh(F, V);
+	var mesh = new JSCAGD.TriMesh(V, F);
 	mesh.build();
 	return mesh;
 };
+
+JSCAGD.TriMesh.prototype.saveOBJ = function() {
+	var output = "# Wavefront OBJ file\n";
+	output += "\n";
+	output += "# "+ this.n + "vertices\n";
+	for (var i = 0; i < this.n; i++) {
+		var v = this.V[i];
+		output += "v " + v.x + " " + v.y + " " + v.z + "\n";
+	}
+	output += "\n";
+	output += "# "+ this.m + "faces\n";
+	for (i = 0; i < this.m; i++) {
+		var f = this.T[i];
+		output += "f " + (f[0]+1) + " " + (f[1]+1) + " " + (f[2]+1) + "\n";
+	}
+	return output;
+};
+
 

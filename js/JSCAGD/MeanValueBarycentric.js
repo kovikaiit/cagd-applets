@@ -81,7 +81,7 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 	var d = [];
 	var u = [];
 	var tmpvec, h, c, s;
-	var i, i1, i2, i3;
+	var i, k;
 	for (i = 0; i < n; i++) {
 		f[i] = 0;
 	}
@@ -93,7 +93,7 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 			f[i] = 1;
 			return f;
 		}
-		tmpvec.normalize()
+		tmpvec.normalize();
 		u[i] = tmpvec;
 	}
 	
@@ -103,7 +103,7 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 		s = [];
 		theta = [];
 		h = 0;
-		for (var k = 0; k < 3; k++) {
+		for (k = 0; k < 3; k++) {
 			tmpvec = u[T[i][(k+1)%3]].clone();
 			tmpvec.addScaledVector(u[T[i][(k+2)%3]], -1);
 			l[k] = tmpvec.length();
@@ -121,7 +121,7 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 			return f;
 		}
 
-		for (var k = 0; k < 3; k++) {
+		for (k = 0; k < 3; k++) {
 			c[k] = (2 * Math.sin(h) * Math.sin(h - theta[k]))/ (Math.sin(theta[(k+1)%3])*Math.sin(theta[(k+2)%3])) - 1;
 			//s[k] = Math.sign[ ... ] * Math.sqrt(1-c[k]*c[k]); 
 			s[k] = Math.sqrt(1-c[k]*c[k]); 
@@ -133,7 +133,7 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 			continue;
 		}
 		
-		for (var k = 0; k < 3; k++) {
+		for (k = 0; k < 3; k++) {
 			tmp = (theta[k] - c[(k+1)%3]*theta[(k+2)%3] - c[(k+2)%3]*theta[(k+1)%3]) / (d[T[i][k]] *Math.sin(theta[(k+1)%3])* s[(k+2)%3]);
 			f[T[i][k]] += tmp; //ONLY INSIDE A CONVEX DOMAIN!!!!
 			total +=  tmp;

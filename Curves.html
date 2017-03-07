@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" >
+    <head>
+        <meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <title>Curves in CAGD</title>
+        
+        <script src="js/FileSaver.min.js"></script>
+	    <script src="js/three.min.js"></script>
+	    <script src="js/dat.gui.min.js"></script>
+
+		<script src="js/JSCAGD/JSCAGD.js"></script>
+		<script src="js/JSCAGD/BaseFunctions.js"></script>
+		<script src="js/JSCAGD/NumDer.js"></script>
+		<script src="js/JSCAGD/BsplineCurve.js"></script>
+		<script src="js/JSCAGD/MeanValueBarycentric.js"></script>
+		<script src="js/JSCAGD/MeanBase.js"></script>
+
+		<script src="js/GUIelements/OrbitControls.js"></script>
+		<script src="js/GUIelements/TransformControls.js"></script>
+		<script src="js/GUIelements/DragControls.js"></script>
+		<script src="js/GUIelements/ControlNet.js"></script>
+		<script src="js/GUIelements/CurveEditor.js"></script>
+		<script src="js/GUIelements/BaseFunctionCurves.js"></script>
+
+	    <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+
+    <body>
+		<div id="container">	
+		</div>
+        <div id="knot">
+	        <div id="knotView"></div><div id="knotSlider"></div>
+        </div>
+		<script src="js/GUIelements/knotdragger.js"></script>
+		<script src="js/jscagd.curves.gui.js"></script>
+
+    </body>
+</html>

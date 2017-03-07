@@ -111,6 +111,7 @@ function PointOnBezierSurface(P, n, m, u, v)
 	var Bu = AllBernstein(n, u);
 	var Bv = AllBernstein(m, v);
 	var C = new THREE.Vector3(0.0, 0.0, 0.0);
+	var k, l;
 	for (k = 0; k <= n; k++) 
 	{
 		for (l = 0; l <= m; l++) 

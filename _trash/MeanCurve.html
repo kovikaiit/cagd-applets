@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" >
+    <head>
+        <meta charset="utf-8" />
+        <meta name="author" content="Script Tutorials" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <title>Bezier curve</title>
+	<style>
+		body {
+			color: #ffffff;
+			background-color: #000000;
+			margin: 0px;
+			overflow: hidden;
+		}
+	</style>
+        
+    </head>
+    <body>
+		<div id="container"></div>
+        <script src="js/three.min.js"></script>
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/bezier.js"></script>
+		<script src="js/TransformControls.js"></script>
+		<script src="js/dat.gui.min.js"></script>
+		<script src="js/JSCAGD/JSCAGD.js"></script>
+		<script src="js/JSCAGD/BaseFunctions.js"></script>
+		<script src="js/JSCAGD/BsplineCurve.js"></script>
+		<script src="js/JSCAGD/MeanBase.js"></script>
+		<script>
+			var container;
+			var scene, camera, renderer;
+			var geometry, material, tubeMesh, tube, controlPolygon, controlPolygonPath, bezierGeometry;
+			var controlPoints = [];
+			var dashedmaterial, pointmaterial, movingpointmaterial;
+			var orbit;
+			var P;
+			var control;
+			var mouse = new THREE.Vector2();
+			var raycaster;
+			var objects = new Array();
+			var SELECTED;
+			var gui;
+			var parameters;
+			var curvePoint;
+
+			init();
+			render();
+			
+
+			function init() 
+			{
+
+				// Scene and camera
+				scene = new THREE.Scene();
+				camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set( 2000, 800, 1300 );
+				camera.lookAt( new THREE.Vector3() );
+
+			  
+				// Grid
+				scene.add( new THREE.GridHelper( 500, 100 ) );
+				scene.fog = new THREE.Fog( 0xe0e0e0, 150, 10000 );
+				
+				// Lights
+				var ambientLight = new THREE.AmbientLight( 0xffffff );
+				scene.add( ambientLight );
+				var directionalLight = new THREE.DirectionalLight( 0xffffff );
+				directionalLight.position.x = 1;
+				directionalLight.position.y = 0.2;
+				directionalLight.position.z = -0.2;
+				directionalLight.position.normalize();
+				scene.add( directionalLight );
+
+				// Renderer
+				renderer = new THREE.WebGLRenderer({ antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setClearColor( 0xf0f0f0 );
+				renderer.setSize( window.innerWidth, window.innerHeight);
+				
+				// Div container
+				container = document.getElementById( 'container' );
+				container.appendChild( renderer.domElement );
+				container.addEventListener('mousedown', onDocumentMouseDown, false);
+				
+				// Raycasting for selection
+				raycaster = new THREE.Raycaster();
+				raycaster.params.Points.threshold = 0.1;
+				
+				// OrbitControl
+				orbit = new THREE.OrbitControls( camera, renderer.domElement );
+				//orbit.enableZoom = false;
+				
+				// Materials
+				material = new THREE.MeshLambertMaterial( { color: 0x444444, shading: THREE.SmoothShading } ) ;
+				pointmaterial = new THREE.MeshLambertMaterial( { color: 0x8C001A, shading: THREE.SmoothShading } ) ;
+				movingpointmaterial = new THREE.MeshLambertMaterial( { color: 0x2e9800, shading: THREE.SmoothShading } ) ;
+				dashedmaterial = new THREE.LineDashedMaterial({
+					color: 0x000000, linewidth: 1, dashSize: 30, gapSize: 20
+				});
+
+				
+				//GUI 
+				initGui();
+				
+				initCurve();
+				drawCurve();	
+
+				// Control point moving
+				control = new THREE.TransformControls( camera, renderer.domElement );
+				control.size = 0.5;
+				control.addEventListener( 'change', function () {
+					updateCurve();
+					updateCurvePoint();
+				} );
+			
+
+				
+				
+			
+				window.addEventListener( 'resize', onWindowResize, false );
+				renderer.render( scene, camera );
+
+			}
+			
+			function initCurve() {
+				// Curve parameters
+				var p0 = new THREE.Vector3(-500.0, -100, -500.0);
+				var p1 = new THREE.Vector3(-500.0, 50, 0.0);
+				var p2 = new THREE.Vector3(500.0, -50.0, 0.0);
+				var p3 = new THREE.Vector3(500.0, 100, 500.0);
+				P = [p0, p1, p2, p3];
+				n = 3;
+			}
+			
+			function initGui() {
+				gui = new dat.GUI();
+	
+				parameters = 
+				{
+					t: 0.5, // numeric slider
+					d: 1/4
+				};
+				// gui.add( parameters )
+				
+				var parameter = gui.add( parameters, 't' ).min(0).max(1).step(0.01).name('Parameter (t)');
+				parameter.onChange(function(value) {
+					updateCurvePoint();
+				});
+				
+				var parameterD = gui.add( parameters, 'd' ).min(0).max(1).step(0.01).name('d');
+				parameterD.onChange(function(value) {
+					updateCurve();
+				});
+				gui.open();
+			}
+			
+			function drawCurve() {
+				bezierGeometry = new JSCAGD.MeanCurve( P, n, parameters.d);
+
+				x = 
+				tube = new THREE.TubeGeometry(
+				    bezierGeometry,  //path
+				    50,    //segments
+				    10,     //radius
+				    8,     //radiusSegments
+				    false  //closed
+				);
+				
+				controlPolygon = new THREE.Geometry();
+				controlPolygon.vertices = P;
+				controlPolygon.computeLineDistances();
+				
+
+				// Tube around the curve
+				tubeMesh = new THREE.Mesh( tube, material );
+				scene.add( tubeMesh );
+				controlPolygonPath = new THREE.Line( controlPolygon, dashedmaterial );	
+				scene.add( controlPolygonPath );
+				
+				// Control points
+				for(i = 0; i <= n; i++)
+				{
+					var geometry = new THREE.SphereGeometry(20, 32, 32);
+					//geometry.translate(P[i].x, P[i].y, P[i].z);
+					var sphere = new THREE.Mesh( geometry, pointmaterial );
+					sphere.position.set(P[i].x, P[i].y, P[i].z);
+					objects.push(sphere);
+					controlPoints.push(sphere);
+					scene.add(sphere);
+				}
+				
+				// Point at 't'
+				var geometry = new THREE.SphereGeometry(25, 32, 32);
+				curvePoint = new THREE.Mesh( geometry, movingpointmaterial );
+				var pos = bezierGeometry.getPoint(parameters.t)
+				curvePoint.position.set(pos.x, pos.y, pos.z);
+				scene.add(curvePoint);
+			}
+			
+			function updateCurve() {
+				for(i = 0; i <= n; i++)
+				{
+					P[i] = controlPoints[i].position;
+				}
+				bezierGeometry = new JSCAGD.MeanCurve( P, n, parameters.d);
+
+				tube = new THREE.TubeGeometry(
+				    bezierGeometry,  //path
+				    50,    //segments
+				    10,     //radius
+				    8,     //radiusSegments
+				    false  //closed
+				);
+				
+				tube.verticesNeedUpdate = true;
+				tube.dynamic = true;
+				tubeMesh.geometry = tube;
+				
+				controlPolygon = new THREE.Geometry();
+				controlPolygon.vertices = P;
+				controlPolygon.computeLineDistances();
+				controlPolygonPath.geometry = controlPolygon;
+			}
+			
+			function updateCurvePoint() {
+				var pos = bezierGeometry.getPoint(parameters.t)
+				curvePoint.position.set(pos.x, pos.y, pos.z);
+			}
+
+			function render() {
+				requestAnimationFrame( render );
+				control.update();
+				renderer.render( scene, camera );
+			}	
+			
+			function onDocumentTouchStart(event){
+			    event.preventDefault();
+			    event.clientX = event.touches[0].clientX;
+			    event.clientY = event.touches[0].clientY;
+			    onDocumentMouseDown(event);
+			}
+			
+			function onDocumentMouseDown(event){
+			    event.preventDefault();
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
+			    raycaster.setFromCamera(mouse, camera);
+			    var intersects = raycaster.intersectObjects(objects);
+				if(intersects.length > 0)
+				{
+				    SELECTED = intersects[ 0 ].object;
+				    scene.add(control);
+				    control.attach(SELECTED);
+					//control.scale = 0.1;
+				} 
+				else if(SELECTED != null)
+				{
+					control.detach(SELECTED);
+					//control.dispose();
+				    scene.remove(control);
+					SELECTED = null
+				}
+			}
+			
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				render();
+			}
+		
+		</script>
+		
+    </body>
+</html>
