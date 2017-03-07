@@ -35,7 +35,7 @@ JSCAGD.BezierCurve.prototype.elevateDegree = function() {
 	Q[0] = this.P[0].clone();
 	for (var i = 1; i <= this.n; i++) {
 		Q[i] = this.P[i-1].clone();
-		Q[i].multiplyScalar(i/(this.n+1))
+		Q[i].multiplyScalar(i/(this.n+1));
 		Q[i].addScaledVector(this.P[i], 1 - i/(this.n+1));
 	}
 	Q[this.n+1] = this.P[this.n].clone();

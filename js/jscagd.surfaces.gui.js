@@ -432,15 +432,15 @@ function drawSurface() {
 	// Point at 't'
 	geometry = new THREE.SphereGeometry(10, 32, 32);
 	curvePoint = new THREE.Mesh( geometry, movingpointmaterial );
-	var pos = PointOnBezierSurface(P, n, m, parameters.u, parameters.v);
+	var pos = Psurface.getPoint(parameters.u, parameters.v);
 	curvePoint.position.set(pos.x, pos.y, pos.z);
 	scene.add(curvePoint);
 
 
-	var tangentU =  TangentUOnBezierSurface(P, n, m, parameters.u, parameters.v);
+	var tangentU =  Psurface.tangentU(parameters.u, parameters.v);
 	tArrow = new THREE.ArrowHelper(tangentU, pos, 200, 0x000000);
 	scene.add(tArrow);
-	var tangentV =  TangentVOnBezierSurface(P, n, m, parameters.u, parameters.v);
+	var tangentV =  Psurface.tangentV(parameters.u, parameters.v);
 	vArrow = new THREE.ArrowHelper(tangentV, pos, 200, 0x000000);
 	scene.add(vArrow);
 	var vectorx = new THREE.Vector3();
@@ -478,13 +478,12 @@ function updateSurface() {
 			P_rev[l][k] = P[k][l];
 		}
 	}
-	//bezierGeometry.dispose();
+
 	Psurface.du = parameters.du;
 	Psurface.dv = parameters.dv;
-	//surfaceMesh.geometry.dispose();
 
 	surfaceTriMesh.updateVertices(Psurface.getVertices(parameters.resolution));
-	//bezierGeometry = surfaceTriMesh.getTHREEGeometry();
+
 	bezierGeometry.computeVertexNormals();
 
 	if(parameters.visMode === 'meanCurv') {
@@ -497,9 +496,6 @@ function updateSurface() {
 		}
 		surfaceMesh.geometry.colorsNeedUpdate = true;
 	}
-	//bezierGeometry = new THREE.ParametricGeometry(function(u, v) {
-	//	return Psurface.getPoint(u, v);
-	//}, parameters.resolution, parameters.resolution);
 
 
 
@@ -528,17 +524,15 @@ function updateSurface() {
 
 function updateSurfacePoint() {
 	var pos = Psurface.getPoint(parameters.u, parameters.v);
-	//this.curvePoint.position.set(pos.x, pos.y, pos.z);
 
 	if (showPoint) {
-
 		curvePoint.position.set(pos.x, pos.y, pos.z);
 	} 
 	if (showFrame) {
-		var tangentU =  TangentUOnBezierSurface(P, n, m, parameters.u, parameters.v);
+		var tangentU =  Psurface.tangentU(parameters.u, parameters.v);
 		tArrow.position.copy(pos);
 		tArrow.setDirection(tangentU);
-		var tangentV =  TangentVOnBezierSurface(P, n, m, parameters.u, parameters.v);
+		var tangentV =  Psurface.tangentV(parameters.u, parameters.v);
 		vArrow.position.copy(pos);
 		vArrow.setDirection(tangentV);
 		var vectorx = tangentU.clone();

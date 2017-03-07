@@ -124,14 +124,17 @@ return vars;
 		container.addEventListener('mousedown', onDocumentMouseDown, false);
 		
 		// OrbitControl
-		if (is3D) {
-			orbit = new THREE.OrbitControls(camera, renderer.domElement);
-			orbit.addEventListener( 'change', render );
-		} else {
-			orbit2D = new THREE.OrbitControls(camera2D, renderer.domElement);
-			orbit2D.addEventListener( 'change', render );
-			orbit2D.enableRotate = false;
-		}
+		
+		orbit = new THREE.OrbitControls(camera3D, renderer.domElement);
+		orbit.addEventListener( 'change', render );
+		
+		orbit2D = new THREE.OrbitControls(camera2D, renderer.domElement);
+		orbit2D.addEventListener( 'change', render );
+		orbit2D.enableRotate = false;
+
+		orbit2D.pan(-200, 150);
+
+		
 		camera2D.position.x = 0;
 		camera2D.position.y = 0;
 		camera2D.position.z = 200;
@@ -146,7 +149,7 @@ return vars;
 
 
 		
-
+		orbit2D.update();
 		window.addEventListener('resize', onWindowResize, false);
 		renderer.render(scene, camera);
 
@@ -195,13 +198,13 @@ return vars;
 
 	function initCurve() {
 		// Curve parameters
-		var p0 = new THREE.Vector3(-600.0,0.0, 0.0);
-		var p1 = new THREE.Vector3(-400.0, 300.0, 0.0);
-		var p2 = new THREE.Vector3(-200.0, 0.0, 0.0);
-		var p3 = new THREE.Vector3(0.0, 0.0, 0.0);
-		var p4 = new THREE.Vector3(100.0, 200.0, 0.0);
-		var p5 = new THREE.Vector3(0.0, 350.0, 0.0);
-		var p6 = new THREE.Vector3(-200.0, 350, 0.0);
+		var p0 = new THREE.Vector3(-400.0, 0.0, 0.0);
+		var p1 = new THREE.Vector3(-200.0, 300.0, 0.0);
+		var p2 = new THREE.Vector3(0.0, 0.0, 0.0);
+		var p3 = new THREE.Vector3(200.0, 0.0, 0.0);
+		var p4 = new THREE.Vector3(300.0, 200.0, 0.0);
+		var p5 = new THREE.Vector3(200, 350.0, 0.0);
+		var p6 = new THREE.Vector3(0.0, 350, 0.0);
 		var P = [p0, p1, p2, p3, p4, p5, p6];
 		var n = 6;
 		curve = new JSCAGD.MeanCurve(P, n, 0.2);
@@ -241,7 +244,7 @@ return vars;
 			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'P-curve' ] ).name('Curve type');
 
 		} else {
-			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline', 'ratBezier' ] ).name('Curve type');
+			typeChange = gui.add(curve, 'curvetype', [ 'Bézier' , 'B-spline' ] ).name('Curve type');
 		}
 		
 		//var typeChange = gui.add(curve, 'curvetype', [ 'P-curve', 'meang1test', 'meang1', 'meang0', 'cyclicInf', 'cyclicTricky', 'Bézier' , 'B-spline' ] ).name('Curve type');
@@ -307,14 +310,14 @@ return vars;
 			render();
 		});
 		//parameterD.domElement.parentNode.parentNode.style.display = 'block';
-		//hideGUIElem(parameterW);
-		//hideGUIElem(parameterW2);
+		hideGUIElem(parameterW);
+		hideGUIElem(parameterW2);
 
 
 		curveDegree = gui.add(params, 'p').min(1).max(10).step(1).name('Degree (p)');
 		curveDegree.onChange(function() {
 
-			if (curve.p !== params.p) {
+			if (curve.p !== params.p && params.p <= curve.n && Number.isInteger(params.p)) {
 
 				curve.setDegree(params.p);
 				cEditor.reset();
@@ -331,7 +334,7 @@ return vars;
 
 		curveDegreeBezier = gui.add(params, 'n').min(1).max(20).step(1).name('Degree (n)');
 		curveDegreeBezier.onChange(function() {
-			if (curve.n !== params.n) {
+			if (curve.n !== params.n && Number.isInteger(params.n) && params.n > 0) {
 				var diff = params.n - curve.n;
 				if (diff > 0) {
 					for (var i = 0; i < diff; i++) {
@@ -410,18 +413,28 @@ return vars;
 			if (is2D) {
 				camera = camera2D;	
 				scene.remove(directionalLight);
-				orbit.dispose();
+				orbit.enabled = false;
+				orbit2D.enabled = true;
 				scene.remove(grid3D);
-				orbit2D = new THREE.OrbitControls(camera, renderer.domElement);
-				orbit2D.addEventListener( 'change', render );
-				orbit2D.enableRotate = false;
+				for (var i = 0; i < curve.P.length; i++) {
+					curve.P[i].z = 0;
+				}
+				cEditor.reset();
+				cEditor.update();
+				cEditor.updateCurvePoint();
+				bsCurves.resetGeometry(curve);
+				
+				//orbit2D = new THREE.OrbitControls(camera2D, renderer.domElement);
+				//orbit2D.addEventListener( 'change', render );
+				//orbit2D.enableRotate = false;
 			} else {
-
-				orbit2D.dispose();
+				orbit.enabled = true;
+				orbit2D.enabled = false;
+				//orbit2D.dispose();
 				camera = camera3D;
 				scene.add(directionalLight);
-				orbit = new THREE.OrbitControls(camera, renderer.domElement);
-				orbit.addEventListener( 'change', render );
+				//orbit = new THREE.OrbitControls(camera3D, renderer.domElement);
+				//orbit.addEventListener( 'change', render );
 				
 				scene.add(grid3D);
 			}

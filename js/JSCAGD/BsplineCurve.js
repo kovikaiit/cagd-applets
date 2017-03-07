@@ -39,10 +39,10 @@ JSCAGD.BsplineCurve = JSCAGD.ParametricCurve.create(
  * @param {Number} i - Index 
  * @return {Number} - The function value
  */
-JSCAGD.BsplineCurve.prototype.evalBase = function(t, i) {
+JSCAGD.BsplineCurve.prototype.evalBase = function(u, i) {
 	var span = JSCAGD.KnotVector.findSpan(this.c_geom.U, this.c_geom.n, this.c_geom.p, u);
-	var N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
-	if (span - this.c_geom.p  <=  this.i && this.i <= span) {
+	if (span - this.c_geom.p  <=  i && i <= span) {
+		var N = JSCAGD.BsplineBase.evalNonWanish(this.c_geom.U, this.c_geom.n, this.c_geom.p, u, span);
 		return  N[this.i - span + this.c_geom.p];
 	} else {
 		return 0;
@@ -164,11 +164,24 @@ JSCAGD.BsplineCurve.prototype.getFrenetFrame = function(u) {
 };
 
 
-
+/**
+ * Knot insertion at 'u'
+ * @param  {Numer} u Parameter
+ */
 JSCAGD.BsplineCurve.prototype.insertKnot = function(u) {
 	var k = JSCAGD.KnotVector.findSpan(this.U, this.n, this.p, u);
 	var r = 1;
-	var s = this.p-r;
+	var s = 0;
+	var i, j, L;
+	for (i = 0; i < this.U.length; i++) {
+		if(this.U[i] === u) {
+			s++;
+		}
+	}
+
+	if(r+s > this.p) {
+		return;
+	}
 	var np = this.n;
 	var p = this.p;
 	var UP = this.U;
@@ -179,8 +192,6 @@ JSCAGD.BsplineCurve.prototype.insertKnot = function(u) {
 	var UQ = [];
 	var Qw = [];
 	var Rw = [];
-
-	var i, j, L;
 
 	for (i = 0; i <= k; i++) {
 		UQ[i] = UP[i];
@@ -198,7 +209,7 @@ JSCAGD.BsplineCurve.prototype.insertKnot = function(u) {
 		Qw[i + r] = Pw[i];
 	}
 	for (i = 0; i <= p - s; i++) {
-		Rw[i] = Pw[k - p + i];
+		Rw[i] = Pw[k - p + i].clone();
 	}
 	for (j = 1; j <= r; j++) {
 		L = k - p + j;
@@ -206,7 +217,7 @@ JSCAGD.BsplineCurve.prototype.insertKnot = function(u) {
 			var alpha = (u - UP[L + i]) / (UP[i + k + 1] - UP[L + i]);
 			Rw[i].multiplyScalar(1.0 - alpha);
 			Rw[i].addScaledVector(Rw[i + 1], alpha);
-			//Rw[i] = alpha * Rw[i + 1] + (1.0 - alpha) * Rw[i]; // vector type !!!
+			
 		}
 		Qw[L] = Rw[0];
 		Qw[k + r - j - s] = Rw[p - j - s];
@@ -216,10 +227,9 @@ JSCAGD.BsplineCurve.prototype.insertKnot = function(u) {
 	}
 
 	this.n = nq;
-	//this.p = nq;
 	this.P = Qw;
 	this.U = UQ;
 
-
 };
+
 

@@ -4,16 +4,13 @@
 function BernsteinBase(i, n, u) {
 	var temp = [];
 	var k, j;
-	for (k = 0; k <= n; k++) 
-	{
+	for (k = 0; k <= n; k++) {
 	    temp.push(0.0);
 	}
 	temp[n - i] = 1.0;
 	var u1 = 1.0 - u;
-	for  (k = 1; k <= n; k++) 
-	{
-	   for (j = n; j>=k; j--) 
-	   {
+	for  (k = 1; k <= n; k++) {
+	   for (j = n; j>=k; j--) {
 	       temp[j] = u1 * temp[j] + u * temp[j-1];
 	   }
 	}
@@ -24,8 +21,7 @@ function AllBernstein(n, u)
 {
     var B = [];
     var k, j;
-	for (k = 0; k <= n; k++) 
-	{
+	for (k = 0; k <= n; k++) {
 	    B.push(0.0);
 	}
     B[0] = 1.0;
@@ -47,12 +43,10 @@ function deCasteljau1(P, n, u)
 { 							
 	var Q = [];
 	var i, k;					
-	for (i = 0; i <= n; i++) 
-	{
+	for (i = 0; i <= n; i++) {
 		Q.push(P[i].clone()); 
 	}	
-	for (k = 1; k <= n; k++)
-	{
+	for (k = 1; k <= n; k++) {
 		for (i = 0; i <= n - k; i++)
 		{
 			Q[i].multiplyScalar(1.0 - u);
@@ -65,25 +59,18 @@ function deCasteljau1(P, n, u)
 
 
 // Not tested yet
-function deCasteljauSurface(P, n, m, u0, v0)
-{
+function deCasteljauSurface(P, n, m, u0, v0) {
 	var Q = [];
 	var i, j;
-	if (n <= m)
-	{
-		for (j = 0; j <= m; j++)
-		{
+	if (n <= m) {
+		for (j = 0; j <= m; j++) {
 			Q[j] = deCasteljau1(P[j], n, u0);
 		}
 		return deCasteljau1(Q, m, v0);
-	}
-	else
-	{
-		for (i = 0; i <= n; i++)
-		{
+	} else {
+		for (i = 0; i <= n; i++) {
 			var PT = new Array();
-			for (j = 0; j <= n; j++)
-			{
+			for (j = 0; j <= n; j++) {
 				PT.push(P[j][i]);
 			}
 			Q[i] = deCasteljau1(PT, m, v0);
@@ -94,8 +81,7 @@ function deCasteljauSurface(P, n, m, u0, v0)
 
 
 
-function PointOnBezierCurve(P, n, u)
-{ 
+function PointOnBezierCurve(P, n, u) { 
 	var B = AllBernstein(n, u);
 	var C = new THREE.Vector3(0.0, 0.0, 0.0);
 	var k;
@@ -106,8 +92,7 @@ function PointOnBezierCurve(P, n, u)
 	return C;
 }
 
-function PointOnBezierSurface(P, n, m, u, v)
-{ 
+function PointOnBezierSurface(P, n, m, u, v) { 
 	var Bu = AllBernstein(n, u);
 	var Bv = AllBernstein(m, v);
 	var C = new THREE.Vector3(0.0, 0.0, 0.0);

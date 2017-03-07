@@ -77,6 +77,31 @@ JSCAGD.ParametricSurface.prototype.getVertices = function(res) {
 	return V;
 };
 
+
+JSCAGD.ParametricSurface.prototype.tangentU = function(u,v) {
+	var that = this;
+	var UCurve = function(u_) {
+		return that.getPoint(u_, v);
+	};
+	return JSCAGD.NumDer.getTangent(UCurve)(u);
+};
+
+JSCAGD.ParametricSurface.prototype.tangentV = function(u,v) {
+	var that = this;
+	var VCurve = function(v_) {
+		return that.getPoint(u, v_);
+	};
+	return JSCAGD.NumDer.getTangent(VCurve)(v);
+};
+
+JSCAGD.ParametricSurface.prototype.normal = function(u,v) {
+	var tangentU = this.tangentU(u,v);
+	var tangentV = this.tangentV(u,v);
+	var normal = new THREE.Vector3();
+	normal.crossVectors(tangentV, tangentU);
+	return normal;
+};
+
 JSCAGD.ParametricSurface.create = function ( constructor, getPointFunc ) {
 
 	constructor.prototype = Object.create( JSCAGD.ParametricSurface.prototype );

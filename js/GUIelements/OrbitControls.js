@@ -360,6 +360,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	}();
 
+	this.pan = pan;
+
 	function dollyIn( dollyScale ) {
 
 		if ( scope.object instanceof THREE.PerspectiveCamera ) {
