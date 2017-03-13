@@ -32,7 +32,6 @@ JSCAGD.TriMesh.prototype.build = function() {
 				this.V[this.T[i][j]].edge = edge;
 			}
 
-
 			//tmp data
 			if(typeof outedgeData[this.T[i][j]] === 'undefined') {
 				outedgeData[this.T[i][j]] = [];
@@ -178,9 +177,7 @@ JSCAGD.TriMesh.prototype.getTHREEGeometry = function() {
 
 JSCAGD.TriMesh.prototype.updateVertices = function(V) {
 	for (var i = 0; i < this.n; i++) {
-		this.V[i].x = V[i].x;
-		this.V[i].y = V[i].y;
-		this.V[i].z = V[i].z;
+		this.V[i].copy(V[i]); 
 	}
 };
 
@@ -217,6 +214,34 @@ JSCAGD.TriMesh.prototype.saveOBJ = function() {
 		output += "f " + (f[0]+1) + " " + (f[1]+1) + " " + (f[2]+1) + "\n";
 	}
 	return output;
+};
+
+// TODO
+JSCAGD.TriMesh.genPlane = function(res) {
+	var i, j, u, v, t0, t1, t2, t3;
+	var V = [];
+	var T = [];
+	var uvs = [];
+	var diff = 1 / (res - 1);
+	for (i = 0; i < res; i++) {
+		for (j = 0; j < res; j++) {
+			u = i*diff;
+			v = j*diff;
+			uvs.push(new THREE.Vector2(u, v));
+			V.push(new THREE.Vector3(400*u -200, 400*v-200, 0));
+			if(i !== res-1 && j !== res-1) {
+				t0 = i*res + j;
+				t1 = i*res + j + 1;
+				t2 = (i+1)*res + j;
+				t3 = (i+1)*res + j+1;
+				T.push([t0, t1, t2], [t2, t1, t3]);
+			}		
+		}
+	}
+	var mesh = new JSCAGD.TriMesh(V, T);
+	mesh.uvs = uvs;
+	mesh.build();
+	return mesh;
 };
 
 

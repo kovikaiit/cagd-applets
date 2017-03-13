@@ -58,11 +58,13 @@ JSCAGD.MeanValue.eval = function(V, v) {
 		f[i] = w;
 		W += w;
 	}
+	var W1 = 1/W;
 	for (i = 0; i < n; i++) {
-		f[i] /= W;
+		f[i] *= W1;
 	}
 	return f;
 };
+
 
 
 /**
@@ -76,12 +78,13 @@ JSCAGD.MeanValue.eval = function(V, v) {
 JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 	var n = V.length;
 	var f = [];
-	var total = 0, tmp;
+	var total = 0,
+		tmp;
 	var l, theta;
 	var d = [];
 	var u = [];
 	var tmpvec, h, c, s;
-	var i, k;
+	var i, j, k;
 	for (i = 0; i < n; i++) {
 		f[i] = 0;
 	}
@@ -89,14 +92,14 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 		tmpvec = V[i].clone();
 		tmpvec.addScaledVector(x, -1);
 		d[i] = tmpvec.length();
-		if(d[i] < JSCAGD.epsilon) {
+		if (d[i] < JSCAGD.epsilon) {
 			f[i] = 1;
 			return f;
 		}
 		tmpvec.normalize();
 		u[i] = tmpvec;
 	}
-	
+
 	for (i = 0; i < T.length; i++) {
 		l = [];
 		c = [];
@@ -104,56 +107,143 @@ JSCAGD.MeanValue.evalTriMesh = function(V, T, x) {
 		theta = [];
 		h = 0;
 		for (k = 0; k < 3; k++) {
-			tmpvec = u[T[i][(k+1)%3]].clone();
-			tmpvec.addScaledVector(u[T[i][(k+2)%3]], -1);
+			tmpvec = u[T[i][(k + 1) % 3]].clone();
+			tmpvec.addScaledVector(u[T[i][(k + 2) % 3]], -1);
 			l[k] = tmpvec.length();
-			theta[k] = 2 * Math.asin(l[k] / 2);
-			
+			theta[k] = 2 * Math.asin(Math.max(Math.min(l[k] / 2, 1), -1));
+
 			h += theta[k];
 		}
-		h = h/2;
-		if(Math.abs(Math.PI - h) < JSCAGD.epsilon) {
+		h = h / 2;
+		if (Math.abs(Math.PI - h) < JSCAGD.epsilon) {
 			// x lies on T[i]
-			f[T[i][0]] = Math.sin(theta[0])*d[1]*d[2];
-			f[T[i][1]] = Math.sin(theta[1])*d[0]*d[2];
-			f[T[i][2]] = Math.sin(theta[2])*d[1]*d[0];
+			for (k = 0; k < n; k++) {
+				f[k] = 0;
+			}
+			f[T[i][0]] = Math.sin(theta[0]) * d[T[i][1]] * d[T[i][2]];
+			f[T[i][1]] = Math.sin(theta[1]) * d[T[i][0]] * d[T[i][2]];
+			f[T[i][2]] = Math.sin(theta[2]) * d[T[i][1]] * d[T[i][0]];
+			total = f[T[i][0]] + f[T[i][1]] + f[T[i][2]];
+			for (j = 0; j < n; j++) {
+				f[j] /= total;
+			}
 
 			return f;
 		}
-
+		var detvec = u[T[i][0]].clone();
+		detvec.cross(u[T[i][1]]);
+		var det = detvec.dot(u[T[i][2]]);
 		for (k = 0; k < 3; k++) {
-			c[k] = (2 * Math.sin(h) * Math.sin(h - theta[k]))/ (Math.sin(theta[(k+1)%3])*Math.sin(theta[(k+2)%3])) - 1;
-			//s[k] = Math.sign[ ... ] * Math.sqrt(1-c[k]*c[k]); 
-			s[k] = Math.sqrt(1-c[k]*c[k]); 
-			//ONLY INSIDE A CONVEX DOMAIN!!!!
-			//NOT WORK FOR CONCAVE CASES
+			c[k] = (2 * Math.sin(h) * Math.sin(h - theta[k])) / (Math.sin(theta[(k + 1) % 3]) * Math.sin(theta[(k + 2) % 3])) - 1;
+			s[k] = Math.sign(det) * Math.sqrt(Math.max(1 - c[k] * c[k], 0));
 		}
 
-		if(s[0] < JSCAGD.epsilon || s[1] < JSCAGD.epsilon || s[2] < JSCAGD.epsilon) {
+		if (Math.abs(s[0]) < JSCAGD.epsilon || Math.abs(s[1]) < JSCAGD.epsilon || Math.abs(s[2]) < JSCAGD.epsilon) {
 			continue;
 		}
-		
-		for (k = 0; k < 3; k++) {
-			tmp = (theta[k] - c[(k+1)%3]*theta[(k+2)%3] - c[(k+2)%3]*theta[(k+1)%3]) / (d[T[i][k]] *Math.sin(theta[(k+1)%3])* s[(k+2)%3]);
-			f[T[i][k]] += tmp; //ONLY INSIDE A CONVEX DOMAIN!!!!
-			total +=  tmp;
-			//debug(s[(k+2)%3]);
-		}
 
+		for (k = 0; k < 3; k++) {
+			var a = (d[T[i][k]] * Math.sin(theta[(k + 1) % 3]) * s[(k + 2) % 3]);
+			tmp = (theta[k] - c[(k + 1) % 3] * theta[(k + 2) % 3] - c[(k + 2) % 3] * theta[(k + 1) % 3]) / a;
+			f[T[i][k]] += tmp;
+			total += tmp;
+		}
 	}
-	//debug(total);
+
+	var total1  = 1/total;
 	for (i = 0; i < n; i++) {
-		f[i] /= total;
+		f[i] *= total1;
 	}
 	return f;
 };
 
 
 
+/**
+ * Based on Geza Kos' personal letter
+ * Evaluate Mean Value generalized barycentric coordinates in 3D for general poly mesh
+ * @param  {List} V  - Vertices of the polytope	
+ * @param  {List} T - Faces (trianlges)
+ * @param  {Vector} v - 3D Point
+ * @return {List}   Coordinates
+ */
+JSCAGD.MeanValue.evalPolyMesh = function(V, T, x) {
+	var n = V.length;
+	var f = [];
+	var total = 0;
+	var d = [];
+	var u = [];
+	var i, j, k, tmpvec;
+	for (i = 0; i < n; i++) {
+		f[i] = 0;
+	}
+	for (i = 0; i < n; i++) {
+		tmpvec = V[i].clone();
+		tmpvec.addScaledVector(x, -1);
+		d[i] = tmpvec.length();
+		if (d[i] < JSCAGD.epsilon) {
+			f[i] = 1;
+			return f;
+		}
+		tmpvec.normalize();
+		u[i] = tmpvec;
+	}
+	for (i = 0; i < T.length; i++) {
+		var t = new JSCAGD.Vector3(0,0,0);
+		k = T[i].length;
+		for (j = 0; j < k; j++) 
+		{
+			var j1 = (j+1) % k;
+			var OPj = u[T[i][j]];
+			var OPj1 = u[T[i][j1]];
+			var njj1 = new JSCAGD.Vector3();
+			njj1.crossVectors(OPj, OPj1);
+			njj1.normalize();
+			var alphaj = Math.acos(OPj.dot(OPj1))/2;
+			t.addScaledVector(njj1, alphaj);
+		}
+		var tnorm = t.length();
+		t.normalize();
 
+		var e = new JSCAGD.Vector3(1,0,0);
+		if(Math.abs(t.z) < JSCAGD.epsilon && Math.abs(t.y) < JSCAGD.epsilon) {
+			e.x = 0;
+			e.y = 1;
+		}
+		var u0 = new JSCAGD.Vector3();
+		u0.crossVectors(e, t);
+		u0.normalize();
+		var v0 = new JSCAGD.Vector3();
+		v0.crossVectors(u0, t); 
+		v0.normalize();
 
+		var actual, scale;
+		var points2D = [];
+		var scales=[];
+		for (j = 0; j < k; j++) 
+		{
+			actual = u[T[i][j]];
+			scale = t.dot(actual);
+			scales.push(scale);
+			points2D.push(new JSCAGD.Vector2(u0.dot(actual)/scale, v0.dot(actual)/scale));
+		}
 
+		var vP = new JSCAGD.Vector2(0, 0);
+		var f0 = JSCAGD.MeanValue.eval(points2D, vP);
 
-
-
-
+		for (j = 0; j < k; j++) 
+		{
+			var norm =  d[T[i][j]];
+			actual =  u[T[i][j]];
+			scale = scales[j];
+			var plus = f0[j] * tnorm / (norm * scale);
+			f[T[i][j]] += plus;
+			total += plus;
+		}
+	}
+	var total1  = 1/total;
+	for (i = 0; i < n; i++) {
+		f[i] *= total1;
+	}
+	return f;
+};

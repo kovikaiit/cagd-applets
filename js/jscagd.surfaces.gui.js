@@ -112,14 +112,12 @@ function init() {
 	});
 	curvmaterial = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors, side: THREE.DoubleSide });
 
-	material = new THREE.MeshPhongMaterial( { map: texture, color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, metalness: 10.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
+	material = new THREE.MeshPhongMaterial( { map: texture, color: 0x111bdd, shading: THREE.SmoothShading, reflectivity: 100.0, side: THREE.DoubleSide, transparent: true, opacity: 0.9} ) ;
 	pointmaterial = new THREE.MeshLambertMaterial({
-		color: 0x880000,
-		shading: THREE.SmoothShading
+		color: 0x880000
 	});
 	movingpointmaterial = new THREE.MeshLambertMaterial({
-		color: 0x2e9800,
-		shading: THREE.SmoothShading
+		color: 0x2e9800
 	});
 	dashedmaterial = new THREE.LineBasicMaterial({
 		color: 0xAA0000,
@@ -206,7 +204,7 @@ function initGui() {
 		showTrieder: true
 	};
 	if(getUrlVars()["psurface"] === "on") {
-		surfaceType = gui.add(parameters, 'type', [ 'Bézier' , 'P-surface', 'B-spline' ] ).name('Surface');
+		surfaceType = gui.add(parameters, 'type', [ 'Bézier' , 'P-surface', 'P-surfaceC0', 'FP-surfaceC0', 'B-spline' ] ).name('Surface');
 	} else {
 		surfaceType = gui.add(parameters, 'type', [ 'Bézier' , 'B-spline' ] ).name('Surface');
 	}
@@ -218,6 +216,14 @@ function initGui() {
 			Psurface = new JSCAGD.BezierSurface(P, n, m);
 		} else if (parameters.type === 'P-surface') {
 			Psurface = new JSCAGD.PSurface(P, n, m, parameters.du, parameters.dv);
+			showGUIElem(parameterDu);
+			showGUIElem(parameterDv);
+		} else if (parameters.type === 'P-surfaceC0') {
+			Psurface = new JSCAGD.PSurfaceC0(P, n, m, parameters.du, parameters.dv);
+			showGUIElem(parameterDu);
+			showGUIElem(parameterDv);
+		} else if (parameters.type === 'FP-surfaceC0') {
+			Psurface = new JSCAGD.FPSurfaceC0(P, n, m, parameters.du);
 			showGUIElem(parameterDu);
 			showGUIElem(parameterDv);
 		} else if (parameters.type === 'B-spline'){
@@ -265,6 +271,9 @@ function initGui() {
 	var parameterDu = gui.add(parameters, 'du').min(0.001).max(3).step(0.001).name('du');
 	parameterDu.onChange(function() {
 		updateSurfacePoint();
+		if(parameters.type ==='FP-surfaceC0') {
+			Psurface.setD(parameters.du);
+		}
 		updateSurface();
 		render();
 	});
@@ -289,19 +298,19 @@ function initGui() {
 	hideGUIElem(parameterMeanMax);
 
 
-		var parameter = gui.add(parameters, 'u').min(0).max(1).step(0.01).name('Parameter (u)');
-		parameter.onChange(function() {
-			updateSurfacePoint();
-			render();
-		});
-		var parameterV = gui.add(parameters, 'v').min(0).max(1).step(0.01).name('Parameter (v)');
-		parameterV.onChange(function() {
-			updateSurfacePoint();
-			render();
-		});
+	var parameter = gui.add(parameters, 'u').min(0).max(1).step(0.01).name('Parameter (u)');
+	parameter.onChange(function() {
+		updateSurfacePoint();
+		render();
+	});
+	var parameterV = gui.add(parameters, 'v').min(0).max(1).step(0.01).name('Parameter (v)');
+	parameterV.onChange(function() {
+		updateSurfacePoint();
+		render();
+	});
 
 	var resolution = gui.add(parameters, 'resolution').min(10).max(150).step(1).name('Resolution');
-	resolution.onChange(function() {
+	resolution.onFinishChange(function() {
 		surfaceTriMesh = Psurface.getMesh(parameters.resolution);
 		bezierGeometry.dispose();
 		bezierGeometry = surfaceTriMesh.getTHREEGeometry();
@@ -480,6 +489,7 @@ function updateSurface() {
 	}
 
 	Psurface.du = parameters.du;
+
 	Psurface.dv = parameters.dv;
 
 	surfaceTriMesh.updateVertices(Psurface.getVertices(parameters.resolution));

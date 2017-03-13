@@ -6,6 +6,8 @@
 
 var meshParameters = {
 
+		material : new THREE.MeshBasicMaterial({transparent: true, opacity: 0.5, color: 0x0000AA}),
+
 		pointmaterial: new THREE.MeshLambertMaterial({
 			color: 0xAA0000,
 		}),
@@ -17,28 +19,28 @@ var meshParameters = {
 			//gapSize: 20
 		}),
 
-		pointRadius: 0.15,
+		pointRadius: 6,
 
-		sphereresolution: 5
+		sphereresolution: 8
 };
 
 
 var MeanToColor = function(x, d) {
+	var r, g, b;
 	if(x < 0) {
-		var b = Math.min(-x / d, 1);
-		var r = 0;
-		var g = 1-b;
+		b = Math.min(-x / d, 1);
+		r = 0;
+		g = 1-b;
 	} else {
-		var r = Math.min(x / d, 1);
-		var b = 0;
-		var g = 1-r;
+		r = Math.min(x / d, 1);
+		b = 0;
+		g = 1-r;
 	}
 	return new THREE.Color(r,g,b);
 };
 
-var MeshEditor = function(mesh, camera, renderer, onChange) {
+var MeshEditor = function(mesh, camera, renderer, onChange, onSelect, onDeselect) {
 
-	//console.log(typeof this);
 	THREE.Object3D.call(this);
 
 	var that = this;
@@ -53,6 +55,8 @@ var MeshEditor = function(mesh, camera, renderer, onChange) {
 	this.mouse = new THREE.Vector2();
 	
 	this.onChange = onChange;
+	this.onSelect = onSelect;
+	this.onDeselect = onDeselect;
 
 	// Control point moving
 	this.control3D = new THREE.TransformControls(this.camera, this.renderer.domElement);
@@ -63,7 +67,6 @@ var MeshEditor = function(mesh, camera, renderer, onChange) {
 		that.update();
 		that.onChange(); //undefined??
 	});
-
 
 	this.control = this.control3D;
 
@@ -92,25 +95,23 @@ var MeshEditor = function(mesh, camera, renderer, onChange) {
 	// Control points
 	for (i = 0; i < this.mesh.V.length; i++) {
 		spgeometry = new THREE.SphereGeometry(meshParameters.pointRadius, meshParameters.sphereresolution, meshParameters.sphereresolution);
-		sphere = new THREE.Mesh(spgeometry, meshParameters.pointmaterial);
+		sphere = new THREE.Mesh(spgeometry, meshParameters.pointmaterial.clone());
+		sphere.material.color = new THREE.Color('#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6));
 		sphere.position.set(this.mesh.V[i].x, this.mesh.V[i].y, this.mesh.V[i].z);
 		this.controlPoints.push(sphere);
 		this.cptContainer.add(sphere);
 	}
-	//this.add(this.cptContainer);
+	this.add(this.cptContainer);
 
-	var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors, side: THREE.DoubleSide });
-	var geom = mesh.getGeometry();
-	//geom.vertexColors = [];
-	for (var i = 0; i < mesh.m; i++) {
-		for (var k = 0; k < 3; k++) {
-			geom.faces[i].vertexColors[k] = MeanToColor(mesh.V[mesh.T[i][k]].mean, 2);
-		}
-		
-		//console.log()
-	}
-	this.clored = new THREE.Mesh( geom, material );
-	this.add(this.clored);
+	//var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors, side: THREE.DoubleSide });
+	//this.geom = mesh.getTHREEGeometry();
+	//for (i = 0; i < mesh.m; i++) {
+	//	for (var k = 0; k < 3; k++) {
+	//		this.geom.faces[i].vertexColors[k] = MeanToColor(mesh.V[mesh.T[i][k]].mean, 2);
+	//	}
+	//}
+	//this.clored = new THREE.Mesh( this.geom, meshParameters.material );
+	//this.add(this.clored);
 };
 
 MeshEditor.prototype = Object.create(THREE.Object3D.prototype);
@@ -120,18 +121,15 @@ MeshEditor.prototype.constructor = MeshEditor;
 MeshEditor.prototype.update = function() {
 	var i;
 	for (i = 0; i < this.mesh.V.length; i++) {
-		this.mesh.V[i] = this.controlPoints[i].position;
+		this.mesh.V[i].copy(this.controlPoints[i].position);
 	}
-	//this.controlPolygon.computeLineDistances();
-	//this.controlPolygon.verticesNeedUpdate = true;
-	//this.controlPolygon.lineDistancesNeedUpdate = true;
 	for (i = 0; i < this.mesh.T.length; i++) {
 		var tri = this.mesh.T[i];
 		var vertices = [this.mesh.V[tri[0]], this.mesh.V[tri[1]], this.mesh.V[tri[2]]];
 		this.triangePatches[i].vertices = vertices;
 		this.triangePatches[i].verticesNeedUpdate = true;
 	}
-
+	//this.geom.verticesNeedUpdate = true;
 };
 
 MeshEditor.prototype.render = function() {
@@ -150,10 +148,12 @@ MeshEditor.prototype.onMouseDown = function(event) {
 			this.SELECTED = intersects[0].object;
 			this.add(this.control);
 			this.control.attach(this.SELECTED);
+			this.onSelect(this.SELECTED);
 		} else if (this.SELECTED !== null) {
 			this.control.detach(this.SELECTED);
 			this.remove(this.control);
 			this.SELECTED = null;
+			this.onDeselect();
 		}
 	
 };

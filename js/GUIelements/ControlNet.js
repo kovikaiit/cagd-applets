@@ -24,7 +24,7 @@ var controlNetParameters = {
 		sphereresolution: 10
 };
 
-var ControlNet = function(geometry, camera, renderer, onChange) {
+var ControlNet = function(geometry, camera, renderer, onChange, onSelect, onDeselect) {
 
 	THREE.Object3D.call(this);
 
@@ -40,6 +40,8 @@ var ControlNet = function(geometry, camera, renderer, onChange) {
 	this.mouse = new THREE.Vector2();
 	
 	this.onChange = onChange;
+	this.onSelect = onSelect;
+	this.onDeselect = onDeselect;
 
 	// Control point moving
 	this.control3D = new THREE.TransformControls(this.camera, this.renderer.domElement);

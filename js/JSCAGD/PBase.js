@@ -77,3 +77,36 @@ JSCAGD.PBase.eval = function(t, U, d) {
 	}
 	return w;
 };
+
+
+//TODO clean Up
+JSCAGD.PBase.evalC0 = function(u, knot, d) {
+	var n = knot.length;
+	var i;
+	var r = [];
+	var b = [];
+	var total = 0;
+	var basis = [];
+	if(u===1 || u === 0) {
+		return JSCAGD.PBase.getSide(u, n );
+	}
+	for (i = 0; i < n; i++) {
+		r[i] = Math.sqrt((knot[i] - u) * (knot[i] - u) + (0.1 * d) * (0.1 * d));
+		if (i !== n - 1) {
+			b[i] = 1 / (knot[i + 1] - knot[i]);
+		}
+	}
+	basis[0] = (r[1] * b[0] - r[0] * b[0]) + r[0] / u;
+	total += basis[0];
+
+	for (i = 1; i < n - 1; i++) {
+		basis[i] = (r[i - 1] * b[i - 1] + r[i + 1] * b[i] - (b[i - 1] + b[i]) * r[i]);
+		total += basis[i];
+	}
+	basis[n - 1] = (r[n - 2] * b[n - 2] - r[n - 1] * b[n - 2]) + r[n - 1] / (1 - u);
+	total += basis[n - 1];
+	for (i = 0; i < n; i++) {
+		basis[i] /= total;
+	}
+	return basis;
+};
