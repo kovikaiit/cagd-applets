@@ -21,8 +21,25 @@ JSCAGD.FPSurface.genGridPolytope = function(n, m, d) {
 				t1 = i * m + j + 1;
 				t2 = (i + 1) * m + j;
 				t3 = (i + 1) * m + j + 1;
-				F.push([2 * t0, 2 * t1, 2 * t3, 2 * t2]);
-				F.push([2 * t0 + 1, 2 * t2 + 1, 2 * t3 + 1, 2 * t1 + 1]);
+				var f1 = [2 * t0, 2 * t1, 2 * t3, 2 * t2];
+				var f2 = [2 * t0 + 1, 2 * t2 + 1, 2 * t3 + 1, 2 * t1 + 1];
+				f1.border = false;
+				f2.border = false;
+				var sideNum = [];
+				if (i === 0) {
+					sideNum.push( 1);
+				} else if (i === n-2){
+				//	sideNum.push(3);
+				}
+				if (j === 0) {
+				//	sideNum.push (2);
+				} else if (j === m-2){
+				//	sideNum.push(4);
+				} 
+				f1.sideNum = sideNum;
+				f2.sideNum = sideNum;
+				F.push(f1);
+				F.push(f2);
 			}
 		}
 	}
@@ -45,6 +62,15 @@ JSCAGD.FPSurface.genGridPolytope = function(n, m, d) {
 		fs3.push(2*(0 * m + j)+1);
 		fs4.push(2*((n-1) * m + (m-1-j))+1);
 	}
+	fs1.border = true;
+	fs1.sideNum = [2];
+	fs2.border = true;
+	fs2.sideNum = [4];
+	fs3.border = true;
+	fs3.sideNum = [1];
+	fs4.border = true;
+	fs4.sideNum = [3];
+
 	F.push(fs1, fs2, fs3, fs4);
 	return new JSCAGD.PolyMesh(V, F);
 };
@@ -61,6 +87,13 @@ JSCAGD.FPSurfaceC0 = JSCAGD.ParametricSurface.create(
 		this.n = n;
 		this.m = typeof m !== 'undefined' ? m : n;
 		this.P = P;
+		this.P0 = [];
+		this.P1 = [];
+		this.P2 = [];
+		this.P3 = [];
+		for (var i = 0; i <= n; i++) {
+			this.P0[i] = P[i][0]; //todo: side points
+		}
 		
 		this.du = d;
 		
@@ -71,9 +104,10 @@ JSCAGD.FPSurfaceC0 = JSCAGD.ParametricSurface.create(
 	},
 
 	function(u, v) {
+
 		var x0 = new THREE.Vector3(u, v, 0);
 
-		var B = JSCAGD.MeanValue.evalPolyMesh(this.polytope.V, this.polytope.T, x0);
+		var B = JSCAGD.MeanValue.evalPolyMeshFP(this.polytope.V, this.polytope.T, x0);
 		var C = new JSCAGD.Vector3(0.0, 0.0, 0.0);
 		var i, j;
 		for (i = 0; i <= this.n; i++) {

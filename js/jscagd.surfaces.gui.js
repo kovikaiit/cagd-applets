@@ -479,7 +479,7 @@ function updateSurface() {
 	var k, l, i;
 	for (k = 0; k <= n; k++) {
 		for (l = 0; l <= m; l++) {
-			P[k][l] = controlPoints[k][l].position;
+			P[k][l].copy(controlPoints[k][l].position);
 		}
 	}
 	for (l = 0; l <= m; l++) {

@@ -1,13 +1,14 @@
-load('three.min.js');
-load('JSCAGD/JSCAGD.js');
-load('JSCAGD/MeanValueBarycentric.js');
-load('JSCAGD/TriMesh.js');
+load('../three.min.js');
+load('../JSCAGD/JSCAGD.js');
+load('../JSCAGD/MeanValueBarycentric.js');
+load('../JSCAGD/TriMesh.js');
 
 var tetraederV = [new THREE.Vector3(0,0,0), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
 var tetraederT = [[0,1,2], [0, 2, 3], [0, 3, 1], [1, 3, 2]];
-var x = new THREE.Vector3(0.001, 0.9, 0.01);
+var x = new THREE.Vector3(0.01, 0.8, 0.01);
 
 debug(JSCAGD.MeanValue.evalTriMesh(tetraederV, tetraederT, x));
+debug(JSCAGD.MeanValue.evalPolyMesh(tetraederV, tetraederT, x));
 
 function loadOBJ(content) {
 	var lines = content.split('\n');
@@ -39,3 +40,19 @@ mesh.build();
 mesh.calcMeanCurvatures();
 
 debug(loadOBJ(testOBJ));
+
+
+
+
+
+var negyszog = [new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(2,2), new THREE.Vector2(0,1)];
+
+var x = new THREE.Vector2(1.9, 1.8);
+var bary = JSCAGD.MeanValue.eval(negyszog, x);
+debug(bary);
+var x0 = new THREE.Vector2(0, 0);
+for (var i = 0; i < negyszog.length; i++) {
+  x0.addScaledVector(negyszog[i], bary[i]);
+}
+debug(x0.x);
+debug(x0.y);
